@@ -31,23 +31,5 @@ public class CustomerRestController {
     public ResponseEntity<CustomerProfileResponse> myProfileUpdate(@RequestBody @Valid CustomerUpdateProfileRequest updateRequest){
         return ResponseEntity.status(HttpStatus.OK).body(customerService.partialUpdateCustomerProfile(updateRequest));
     }
-    @PostMapping("/cart")
-    public ResponseEntity<CartResponse> addToCart(@RequestBody @Valid CartItemRequest cartItemRequest){
-        return ResponseEntity.status(HttpStatus.OK).body(customerService.addToCart(cartItemRequest));
-    }
 
-    @GetMapping("/cart")
-    public ResponseEntity<CartResponse> viewMyCart(){
-        return ResponseEntity.status(HttpStatus.OK).body(customerService.viewMyCart());
-    }
-
-    @PostMapping("/cart/checkout")
-    public ResponseEntity<CheckoutResponse> checkout(@RequestBody @Valid CheckOutRequest checkOutRequest){
-        return ResponseEntity.status(HttpStatus.OK).body(customerService.checkOut(checkOutRequest));
-    }
-
-    @GetMapping("invoice/{orderId}")
-   public ResponseEntity<InvoiceResponse> getInvoice(@PathVariable Long orderId){
-        return ResponseEntity.status(HttpStatus.OK).body(customerService.generateInvoice(orderId));
-    }
 }

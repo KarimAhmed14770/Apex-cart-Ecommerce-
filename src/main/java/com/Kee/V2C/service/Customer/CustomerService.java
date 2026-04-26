@@ -11,8 +11,4 @@ import com.Kee.V2C.dto.order.InvoiceResponse;
 public interface CustomerService {
     CustomerProfileResponse myProfile();
     CustomerProfileResponse partialUpdateCustomerProfile(CustomerUpdateProfileRequest updateRequest);
-    CartResponse addToCart(CartItemRequest cartItemRequest);
-    CartResponse viewMyCart();
-    CheckoutResponse checkOut(CheckOutRequest checkOutRequest);
-    InvoiceResponse generateInvoice(long orderId);
 }
