@@ -48,7 +48,7 @@ public class Vendor {
     private List<ProductRequest> productRequests;
 
     @OneToMany(mappedBy = "vendor",fetch = FetchType.LAZY)
-    private List<SubOrder> orders;
+    private List<SubOrder> subOrders;
 
     public Vendor(){}
 
@@ -148,6 +148,11 @@ public class Vendor {
     public void addProductModel(ProductModel productModel){
         productModels.add(productModel);
         productModel.setVendor(this);
+    }
+
+        public void addSubOrder(SubOrder subOrder){
+        subOrders.add(subOrder);
+        subOrder.setVendor(this);
     }
 
 
