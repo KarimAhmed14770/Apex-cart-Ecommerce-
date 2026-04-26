@@ -2,6 +2,7 @@ package com.Kee.V2C.entity;
 
 import com.Kee.V2C.enums.OrderStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -45,6 +46,7 @@ public class SubOrder {
     //when we save or delete an order we want order items to be saved or deleted automatically
     //so cacade is all
     @OneToMany(mappedBy = "subOrder",fetch = FetchType.LAZY,cascade = CascadeType.ALL)
+    @BatchSize(size = 10)
     List<OrderItem> orderItems=new ArrayList<>();
 
 
