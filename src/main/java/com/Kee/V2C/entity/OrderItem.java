@@ -37,6 +37,12 @@ public class OrderItem {
         this.priceAtPurchase = priceAtPurchase;
     }
 
+    public OrderItem(Product product, int quantity, BigDecimal priceAtPurchase) {
+        this.product = product;
+        this.quantity = quantity;
+        this.priceAtPurchase = priceAtPurchase;
+    }
+
     public Long getId() {
         return id;
     }
