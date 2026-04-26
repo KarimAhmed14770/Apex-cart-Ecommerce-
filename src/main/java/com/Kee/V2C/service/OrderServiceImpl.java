@@ -4,15 +4,12 @@ import com.Kee.V2C.Repository.CustomerRepository;
 import com.Kee.V2C.Repository.OrderRepository;
 import com.Kee.V2C.Repository.VendorRepository;
 import com.Kee.V2C.dto.customer.CheckOutRequest;
-import com.Kee.V2C.dto.customer.OrderResponse;
+import com.Kee.V2C.dto.order.OrderResponse;
 import com.Kee.V2C.entity.*;
 import com.Kee.V2C.enums.OrderStatus;
 import com.Kee.V2C.exception.ResourceNotFoundException;
-import com.Kee.V2C.service.Customer.CustomerService;
-import com.Kee.V2C.specifications.CustomerSpecs;
 import com.Kee.V2C.specifications.OrderSpecs;
 import com.Kee.V2C.utils.SecurityUtil;
-import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 

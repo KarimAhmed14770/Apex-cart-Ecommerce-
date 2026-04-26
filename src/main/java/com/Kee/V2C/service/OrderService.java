@@ -1,7 +1,7 @@
 package com.Kee.V2C.service;
 
 import com.Kee.V2C.dto.customer.CheckOutRequest;
-import com.Kee.V2C.dto.customer.OrderResponse;
+import com.Kee.V2C.dto.order.OrderResponse;
 import com.Kee.V2C.entity.CartItem;
 import com.Kee.V2C.entity.Order;
 import com.Kee.V2C.enums.OrderStatus;

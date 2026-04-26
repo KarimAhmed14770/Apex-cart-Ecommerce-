@@ -1,4 +1,4 @@
-package com.Kee.V2C.dto.customer;
+package com.Kee.V2C.dto.order;
 
 import java.math.BigDecimal;
 
