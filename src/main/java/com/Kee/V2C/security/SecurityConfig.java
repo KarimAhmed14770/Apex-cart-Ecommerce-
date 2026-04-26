@@ -59,7 +59,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html","/index.html","/shop.html", "/account.html"
+                                "/swagger-ui.html","/index.html","/shop.html","/orders.html", "/account.html"
                                 , "/admin.html", "/api.js","/app.css","/uploads/**","/vendor.html","/api/products/**"
                                 ,"/api/categories/**","/api/brands/**",
                                         "/").permitAll()// Make registration public
@@ -69,6 +69,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/vendors/**").hasRole("SELLER")
                         .requestMatchers("/api/customers/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/orders/**").hasRole("CUSTOMER")
                         .anyRequest().authenticated() //any request of those are protected
         ).sessionManagement(session->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
