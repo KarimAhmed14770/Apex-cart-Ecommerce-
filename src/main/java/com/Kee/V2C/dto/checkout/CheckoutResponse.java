@@ -1,4 +1,4 @@
-package com.Kee.V2C.dto.customer;
+package com.Kee.V2C.dto.checkout;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

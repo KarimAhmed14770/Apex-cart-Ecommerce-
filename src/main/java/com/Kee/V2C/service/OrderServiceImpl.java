@@ -3,7 +3,7 @@ package com.Kee.V2C.service;
 import com.Kee.V2C.Repository.CustomerRepository;
 import com.Kee.V2C.Repository.OrderRepository;
 import com.Kee.V2C.Repository.VendorRepository;
-import com.Kee.V2C.dto.customer.CheckOutRequest;
+import com.Kee.V2C.dto.checkout.CheckOutRequest;
 import com.Kee.V2C.dto.order.OrderResponse;
 import com.Kee.V2C.entity.*;
 import com.Kee.V2C.enums.OrderStatus;

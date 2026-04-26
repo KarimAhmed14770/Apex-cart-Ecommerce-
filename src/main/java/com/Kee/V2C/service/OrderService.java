@@ -1,6 +1,6 @@
 package com.Kee.V2C.service;
 
-import com.Kee.V2C.dto.customer.CheckOutRequest;
+import com.Kee.V2C.dto.checkout.CheckOutRequest;
 import com.Kee.V2C.dto.order.OrderResponse;
 import com.Kee.V2C.entity.CartItem;
 import com.Kee.V2C.entity.Order;
