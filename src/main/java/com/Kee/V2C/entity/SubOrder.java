@@ -24,7 +24,7 @@ public class SubOrder {
     private OrderStatus status;
 
     @Column(name = "total_price")
-    BigDecimal totalPrice;
+    BigDecimal totalPrice=BigDecimal.ZERO;
 
     @Column(name = "ordered_at")
     @CreatedDate
