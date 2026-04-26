@@ -1,12 +1,16 @@
 package com.Kee.V2C.rest;
 
+import com.Kee.V2C.dto.product.NewProductRequest;
 import com.Kee.V2C.dto.product.ProductModelResponse;
+import com.Kee.V2C.dto.product.ProductRequestResponse;
 import com.Kee.V2C.enums.ProductModelStatus;
 import com.Kee.V2C.service.ProductModel.ProductModelService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +23,7 @@ public class ProductModelController {
     public ProductModelController(ProductModelService productModelService){
         this.productModelService=productModelService;
     }
-    @GetMapping("/")
+    @GetMapping
     public ResponseEntity<Page<ProductModelResponse>> getActiveProductModels(Pageable page){
         return ResponseEntity.status(HttpStatus.OK).
                 body((productModelService.getActiveProductModels(page).map(productModelService::convertProductModelToDto)));
@@ -44,4 +48,10 @@ public class ProductModelController {
                         subCategoryId,brandId,true, ProductModelStatus.ACTIVE,page)
                         .map(productModelService::convertProductModelToDto));
     }
+
+    @PostMapping(value = "/product-requests",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductRequestResponse> requestNewProduct(@Valid @ModelAttribute NewProductRequest newProductRequest){
+        return ResponseEntity.status(HttpStatus.CREATED).body(productModelService.requestNewProduct(newProductRequest));
+    }
+
 }

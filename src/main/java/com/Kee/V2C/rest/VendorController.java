@@ -21,9 +21,6 @@ public class VendorController {
 
     private final VendorServiceImpl vendorService;
 
-
-
-
     public VendorController(VendorServiceImpl sellerService){
         this.vendorService=sellerService;
     }
@@ -38,84 +35,4 @@ public class VendorController {
         return ResponseEntity.status(HttpStatus.OK).body(vendorService.myProfile());
     }
 
-    @PostMapping("/my-shop")
-    public ResponseEntity<ShopResponse> registerShop(@RequestBody @Valid ShopRegisterRequest shopRegisterRequest){
-        ShopResponse response=vendorService.registerShop(shopRegisterRequest);
-        URI location= ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}").buildAndExpand(response.id())
-                .toUri();
-        return ResponseEntity.created(location).body(response);
-    }
-
-    @PatchMapping("/my-shop")
-    public ResponseEntity<ShopResponse> updateShop(@RequestBody @Valid ShopUpdateRequest shopRequest){
-        return ResponseEntity.ok(vendorService.updateShopInfo(shopRequest));
-    }
-
-    @GetMapping("/my-shop")
-    public ResponseEntity<ShopViewResponse> viewShop(Pageable page){
-        return ResponseEntity.ok(vendorService.viewShop(page));
-    }
-
-    @PatchMapping("/my-shop/deactivate")
-    public ResponseEntity<ShopResponse> deactivateShop(){
-        return ResponseEntity.ok(vendorService.deactivateShop());
-    }
-
-    @PatchMapping("/my-shop/activate")
-    public ResponseEntity<ShopResponse> activateShop(){
-        return ResponseEntity.ok(vendorService.activateShop());
-    }
-
-    @PostMapping(value = "/product-requests",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProductRequestResponse> requestNewProduct( @Valid @ModelAttribute NewProductRequest newProductRequest){
-        return ResponseEntity.status(HttpStatus.CREATED).body(vendorService.requestNewProduct(newProductRequest));
-    }
-
-    @GetMapping("/product-models/my")
-    public ResponseEntity<Page<ProductModelResponse>> viewMyProductModels(Pageable page){
-        return ResponseEntity.ok(vendorService.myProductModels(page));
-
-    }
-    @GetMapping("/product-models/search")
-    public ResponseEntity<Page<ProductModelResponse>> searchGlobalProductModels(
-            @RequestParam(required = false) Long brandId,
-            @RequestParam(required = false) Long subCategoryId,
-            @RequestParam(required = false) String description,
-            Pageable page){
-        return ResponseEntity.ok(vendorService.searchGlobalProductModel(brandId, subCategoryId, description, page));
-
-    }
-
-    @PostMapping(value = "/products/add-to-shop",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProductResponse> addToStock( @Valid @ModelAttribute ProductAddToStockRequest productAddToStockRequest){
-        ProductResponse productResponse=vendorService.addProductToStock(productAddToStockRequest);
-        URI location=ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
-                .buildAndExpand(productResponse.id()).toUri();
-        return ResponseEntity.created(location).body(productResponse);
-    }
-
-
-    @GetMapping("/products")
-    public ResponseEntity<Page<ProductResponse>> getMyProducts(Pageable page){
-        return ResponseEntity.ok(vendorService.showMyProducts(page));
-    }
-
-    @PatchMapping("/products/edit-product-stock/{id}")
-    public ResponseEntity<ProductResponse> editStock(@PathVariable("id") Long id, @RequestParam int quantity){
-        return ResponseEntity.ok(vendorService.addStock(id,quantity));
-    }
-
-    @PatchMapping(value = "/products/update/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProductResponse> updateProduct(@PathVariable("id") Long id, @Valid @ModelAttribute ProductUpdateRequest productUpdateRequest){
-        return ResponseEntity.ok(vendorService.updateProductInfo(id,productUpdateRequest));
-    }
-
-
-     /*
-     ProductResponse updateProductInfo(Long id,ProductUpdateRequest productUpdateRequest);
-    ProductResponse AddStock(Long id,Integer quantity);
-
-
-        */
 }
