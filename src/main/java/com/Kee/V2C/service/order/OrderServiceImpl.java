@@ -1,4 +1,4 @@
-package com.Kee.V2C.service;
+package com.Kee.V2C.service.order;
 
 import com.Kee.V2C.Repository.CustomerRepository;
 import com.Kee.V2C.Repository.OrderRepository;
@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 
 @Service
-public class OrderServiceImpl implements OrderService{
+public class OrderServiceImpl implements OrderService {
 
     private final VendorRepository vendorRepository;
     private final CustomerRepository customerRepository;

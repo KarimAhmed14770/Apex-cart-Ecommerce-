@@ -1,7 +1,7 @@
 package com.Kee.V2C.rest;
 
 import com.Kee.V2C.dto.order.OrderResponse;
-import com.Kee.V2C.service.OrderService;
+import com.Kee.V2C.service.order.OrderService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;

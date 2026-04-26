@@ -1,4 +1,4 @@
-package com.Kee.V2C.service;
+package com.Kee.V2C.service.order;
 
 import com.Kee.V2C.dto.checkout.CheckOutRequest;
 import com.Kee.V2C.dto.order.OrderResponse;
