@@ -11,7 +11,9 @@ import com.Kee.V2C.enums.UserRoles;
 import com.Kee.V2C.enums.UserStatus;
 import com.Kee.V2C.exception.*;
 import com.Kee.V2C.mapper.CustomerMapper;
+import com.Kee.V2C.service.Admin.AdminService;
 import com.Kee.V2C.service.Authentication.JwtService;
+import com.Kee.V2C.service.OrderService;
 import com.Kee.V2C.utils.SecurityUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,22 +24,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 @Service
 public class CustomerServiceImpl implements CustomerService {
 
-    private final PasswordEncoder passwordEncoder;
     private final CustomerRepository customerRepository;
-    private final CredentialRepository credentialRepository;
     private final ProductRepository productRepository;
-    private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
     private final SecurityUtil securityUtil;
     private final CartItemRepository cartItemRepository;
     private final StockRepository stockRepository;
     private final OrderRepository orderRepository;
     private final CustomerMapper customerMapper;
+    private final OrderService orderService;
 
 
     @Autowired
@@ -46,18 +46,15 @@ public class CustomerServiceImpl implements CustomerService {
                                ProductRepository productRepository, SecurityUtil securityUtil
                             , CartItemRepository cartItemRepository, StockRepository stockRepository,
                                OrderRepository orderRepository, CustomerMapper customerMapper,
-                               CredentialRepository credentialRepository){
+                               CredentialRepository credentialRepository,OrderService orderService){
         this.customerRepository = customerRepository;
-        this.passwordEncoder=passwordEncoder;
-        this.credentialRepository=credentialRepository;
-        this.authenticationManager=authenticationManager;
-        this.jwtService=jwtService;
         this.securityUtil=securityUtil;
         this.productRepository=productRepository;
         this.cartItemRepository=cartItemRepository;
         this.stockRepository=stockRepository;
         this.orderRepository=orderRepository;
         this.customerMapper=customerMapper;
+        this.orderService=orderService;
     }
 
 
@@ -121,7 +118,7 @@ public class CustomerServiceImpl implements CustomerService {
         //Validate: Check if every item in that cart is still in stock (The Atomic Shield).
         cartStockValidationAndUpdate(cart);
         //Convert: Transform the Cart items into Order items and Order
-        Order order=convertCartToOrder(checkOutRequest,cart);
+        Order order=orderService.convertCartToOrder(checkOutRequest,cart);
         orderRepository.save(order);
 
         //empty the cart of the user on the db , this is better than deleting 1 by 1 in loop
@@ -136,25 +133,28 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional(readOnly = true)
     public InvoiceResponse generateInvoice(long orderId){
         Customer customer=getCurrentCustomer();
-        Order order=orderRepository.findByIdWithItemsDetails(orderId).orElseThrow(
+        Order order=orderRepository.findByIdWithSubOrders(orderId).orElseThrow(
                 ()->new OrderNotFoundException("you don't have an order with id: "+orderId)
         );
         if(!(order.getCustomer().equals(customer))){
             throw new UserAccessDeniedException ("you can't access this order");
         }
+        List<SubOrder> subOrders=new ArrayList<>();
+        subOrders=order.getSubOrders();
+        List<List<OrderItem>> orderItemsLists=subOrders.stream().map(SubOrder::getOrderItems).toList();
         List<OrderItemResponse> orderItemsResponse=new ArrayList<>();
-        for(OrderItem orderItem:order.getOrderItems()){
+        for(List<OrderItem> orderItemList:orderItemsLists){
+            for(OrderItem orderItem:orderItemList){
             OrderItemResponse response=new OrderItemResponse(
                     orderItem.getProduct().getId(),
                     orderItem.getProduct().getName(),
                     orderItem.getProduct().getProductModel().getImageUrl(),
                     orderItem.getQuantity(),
                     orderItem.getPriceAtPurchase(),
-                    orderItem.getPriceAtPurchase().multiply(BigDecimal.valueOf(orderItem.getQuantity()))
-            );
-            orderItemsResponse.add(response);
+                    orderItem.getPriceAtPurchase().multiply(BigDecimal.valueOf(orderItem.getQuantity())));
+                    orderItemsResponse.add(response);
+            }
         }
-
         return new InvoiceResponse(
                 order.getId(),
                 order.getOrderedAt(),
@@ -162,7 +162,6 @@ public class CustomerServiceImpl implements CustomerService {
                 order.getTotalPrice()
         );
     }
-
 
 
     /*Helper Methods*/
@@ -285,18 +284,5 @@ public class CustomerServiceImpl implements CustomerService {
             }
         }
     }
-    private Order convertCartToOrder(CheckOutRequest checkOutRequest,List<CartItem> cart){
-        Order order=new Order(checkOutRequest.shippingAddress(), OrderStatus.PENDING);//order first status is pending
-        order.setCustomer(getCurrentCustomer());
-        BigDecimal totalPrice=new BigDecimal(0);
-        for(CartItem cartItem:cart){
-            OrderItem orderItem=new OrderItem(order,cartItem.getProduct(),
-                    cartItem.getQuantity(),cartItem.getProduct().getPrice());
-            order.addOrderItem(orderItem);
-            totalPrice=totalPrice.add(cartItem.getProduct().getPrice().
-                    multiply(BigDecimal.valueOf(cartItem.getQuantity())));
-        }
-        order.setTotalPrice(totalPrice);
-        return order;
-    }
+
 }
