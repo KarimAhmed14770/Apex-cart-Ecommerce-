@@ -28,7 +28,7 @@ public class Order {
 
 
     @Column(name = "total_price")
-    private BigDecimal totalPrice;
+    private BigDecimal totalPrice=BigDecimal.ZERO;
 
 
     @Column(name = "ordered_at")
