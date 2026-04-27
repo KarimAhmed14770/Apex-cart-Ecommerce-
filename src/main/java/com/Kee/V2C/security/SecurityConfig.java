@@ -60,16 +60,16 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html","/index.html","/shop.html","/orders.html", "/account.html"
-                                , "/admin.html", "/api.js","/app.css","/uploads/**","/vendor.html","/api/products/**"
+                                , "/admin.html", "/api.js","/app.css","/uploads/**","/vendor.html"
                                 ,"/api/categories/**","/api/brands/**",
                                         "/").permitAll()// Make registration public
-                        .requestMatchers("/api/product-models").hasAnyRole("SELLER","ADMIN")
-                        .requestMatchers("/api/test/securityDBhandShakeAdmin").hasRole("ADMIN")
-                        .requestMatchers("/api/test/my-profile").hasRole("CUSTOMER")
+                        .requestMatchers("/api/product-models/**").hasAnyRole("SELLER","ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/vendors/**").hasRole("SELLER")
-                        .requestMatchers("/api/customers/**").hasRole("CUSTOMER")
-                        .requestMatchers("/api/orders/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/vendors/**","/api/products/vendor/**"
+                                ,"/api/shops/**","/api/stocks/**").hasRole("SELLER")
+                        .requestMatchers("/api/test/my-profile","/api/carts/**","/api/checkouts"
+                        ,"/api/invoices/**","/api/customers/**","/api/orders/**","/api/products","/api/products/*").hasRole("CUSTOMER")
+
                         .anyRequest().authenticated() //any request of those are protected
         ).sessionManagement(session->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
