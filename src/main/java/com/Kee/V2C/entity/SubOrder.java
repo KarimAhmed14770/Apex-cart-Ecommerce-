@@ -120,4 +120,16 @@ public class SubOrder {
         this.orderItems.add(orderItem);
         orderItem.setSubOrder(this);
     }
+
+    public void transitionTo(OrderStatus newStatus) {
+        if (this.status == OrderStatus.DELIVERED || this.status == OrderStatus.CANCELED) {
+            throw new IllegalStateException(
+                    "Cannot change status of a sub-order that is already " + this.status);
+        }
+        if (newStatus == OrderStatus.DELIVERED && this.status != OrderStatus.SHIPPING) {
+            throw new IllegalStateException(
+                    "Sub-order must be SHIPPING before it can be marked DELIVERED");
+        }
+        this.status = newStatus;
+    }
 }

@@ -131,6 +131,20 @@ public class Order {
         this.subOrders.add(subOrder);
         subOrder.setOrder(this);
     }
+
+
+    public void transitionTo(OrderStatus newStatus) {
+        if (this.status == OrderStatus.DELIVERED || this.status == OrderStatus.CANCELED) {
+            throw new IllegalStateException(
+                    "Cannot change status of an order that is already " + this.status);
+        }
+        if (newStatus == OrderStatus.DELIVERED && this.status != OrderStatus.SHIPPING) {
+            throw new IllegalStateException(
+                    "Order must be SHIPPING before it can be marked DELIVERED");
+        }
+        this.status = newStatus;
+    }
+
     @Override
     public String toString() {
         return "Order{" +
