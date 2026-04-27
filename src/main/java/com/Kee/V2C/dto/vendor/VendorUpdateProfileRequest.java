@@ -10,7 +10,7 @@ public record VendorUpdateProfileRequest(
                                 @Size(min=2,max=50,message = "min is 2 characters, max is 50")
                                     String vendorName,
 
-                                    MultipartFile imageUrl,
+                                    MultipartFile imageFile,
                                 @Size(min = 10, max = 200, message = "Address is too short. Please provide more details (Street, Building, etc.)")
                                 @Pattern(
                                         regexp = "^[a-zA-Z0-9\\p{L}\\s\\.,'\\-\\/\\(\\)]+$",
