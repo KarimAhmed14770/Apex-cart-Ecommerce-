@@ -8,6 +8,7 @@ import com.Kee.V2C.dto.product.ProductViewResponse;
 import com.Kee.V2C.entity.Product;
 import com.Kee.V2C.entity.Vendor;
 import com.Kee.V2C.exception.ResourceNotFoundException;
+import com.Kee.V2C.exception.UserAccessDeniedException;
 import com.Kee.V2C.mapper.ProductMapper;
 import com.Kee.V2C.utils.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,10 +60,14 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ProductResponse updateProductInfo(Long id, ProductUpdateRequest productUpdateRequest){
+    public ProductResponse updateProductInfo(Long id, ProductUpdateRequest productUpdateRequest)
+    {
         Product product=productRepository.findById(id).orElseThrow(
                 ()->new ResourceNotFoundException("no product with id: "+id)
         );
+        if(!(product.getVendor().getId().equals(securityUtil.getCurrentUserId()))){
+            throw new UserAccessDeniedException("you can't access this product");
+        }
         productMapper.updateProductFromDto(productUpdateRequest,product);
         return convertProductToDto(product);
     }
