@@ -23,7 +23,7 @@ public class ProductController {
         this.productService=productService;
     }
 
-        @GetMapping("/")
+        @GetMapping
         public ResponseEntity<Page<ProductViewResponse>> getProductsByDescription(@RequestParam String search, Pageable page){
             return ResponseEntity.ok(productService.getProductByDescription(search,page));
         }
@@ -33,12 +33,12 @@ public class ProductController {
     }
 
 
-    @GetMapping("/products")
+    @GetMapping("/vendor")
     public ResponseEntity<Page<ProductResponse>> getMyProducts(Pageable page){
         return ResponseEntity.ok(productService.showMyProducts(page));
     }
 
-    @PatchMapping(value = "/products/update/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PatchMapping(value = "/vendor/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable("id") Long id, @Valid @ModelAttribute ProductUpdateRequest productUpdateRequest){
         return ResponseEntity.ok(productService.updateProductInfo(id,productUpdateRequest));
     }
