@@ -1,11 +1,10 @@
 package com.Kee.V2C.service.Authentication;
 
-import com.Kee.V2C.Repository.CustomerRepository;
 import com.Kee.V2C.security.UserDetailsImpl;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -16,19 +15,12 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
-    private CustomerRepository customerRepository;
 
     @Value("${application.security.jwt.secret-key}")
     private String secretKey;
 
     @Value("${application.security.jwt.expiration}")
     private long jwtExpiration;
-
-    @Autowired
-    public JwtService(CustomerRepository customerRepository){
-        this.customerRepository = customerRepository;
-    }
-
 
     /*generates a signInKey based on the secret key*/
     public SecretKey signInKey(){
@@ -49,7 +41,12 @@ public class JwtService {
     }
 
     public String extractUserName(String token){
-        return extractClaim(token,Claims::getSubject);
+        try {
+            return extractClaim(token, Claims::getSubject);
+        }
+        catch (JwtException | IllegalArgumentException e){
+            return null;
+        }
     }
 
     public Date extractExpiration(String token){
@@ -76,7 +73,7 @@ public class JwtService {
 
     public boolean isTokenValid(String token,UserDetails userDetails){
         String tokenUserName=extractUserName(token);
-        return (tokenUserName.equals(userDetails.getUsername())&&!isExpired(token));
+        return (tokenUserName!=null && tokenUserName.equals(userDetails.getUsername())&&!isExpired(token));
     }
 
     public boolean isExpired(String token){
