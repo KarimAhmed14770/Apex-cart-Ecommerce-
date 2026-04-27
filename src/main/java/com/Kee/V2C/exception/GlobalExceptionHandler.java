@@ -142,11 +142,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<UserErrorResponse> handleException
             (UserAccessDeniedException userAccessDeniedException){
         UserErrorResponse error=new UserErrorResponse();
-        error.setStatus(HttpStatus.BAD_REQUEST.value());
+        error.setStatus(HttpStatus.FORBIDDEN.value());
         error.setMessage(userAccessDeniedException.getMessage());
         error.setTimeStamp(System.currentTimeMillis());
 
-        return new ResponseEntity<>(error,HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(error,HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler
