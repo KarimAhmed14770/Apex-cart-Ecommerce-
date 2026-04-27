@@ -365,6 +365,7 @@ public class AdminServiceImpl implements AdminService {
         return convertProductRequestToDto(productRequest);
     }
     @Override
+    @Transactional
     public ProductRequestResponse rejectProductAddRequest(Long id){
         ProductRequest productRequest=productRequestRepository.findById(id).
                 orElseThrow(()->new ResourceNotFoundException("no product request with id: "+id));
