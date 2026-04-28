@@ -47,6 +47,9 @@ public class Order {
     @OneToMany(mappedBy = "order",fetch = FetchType.LAZY,cascade = CascadeType.ALL)
     List<SubOrder> subOrders=new ArrayList<>();
 
+    @OneToOne(mappedBy = "order",fetch = FetchType.LAZY)
+    private PaymentRecord paymentRecord;
+
 
 
 
