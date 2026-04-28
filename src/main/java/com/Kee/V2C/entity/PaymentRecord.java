@@ -1,6 +1,7 @@
 package com.Kee.V2C.entity;
 
 
+import com.Kee.V2C.enums.PaymentMethod;
 import com.Kee.V2C.enums.PaymentStatus;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -15,9 +16,11 @@ import java.time.LocalDateTime;
 public class PaymentRecord {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true)
     private String idempotencyKey; // The unique shield
 
     @Enumerated(EnumType.STRING)
@@ -28,6 +31,10 @@ public class PaymentRecord {
 
     @Column(name = "amount")
     private BigDecimal amount;
+
+    @Column(name = "payment_method")
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
 
 
     @Column(name = "transaction_reference")
@@ -47,10 +54,19 @@ public class PaymentRecord {
 
     public PaymentRecord(){}
 
-    public PaymentRecord(String idempotencyKey,BigDecimal amount, PaymentStatus status){
+    public PaymentRecord(String idempotencyKey,Order order, PaymentStatus status,PaymentMethod paymentMethod,BigDecimal amount){
         this.idempotencyKey=idempotencyKey;
-        this.amount=amount;
+        this.order=order;
         this.status=status;
+        this.paymentMethod=paymentMethod;
+        this.amount=amount;
+    }
+
+    public PaymentRecord(PaymentMethod paymentMethod,PaymentStatus paymentStatus,Order order, BigDecimal amount){
+        this.paymentMethod=paymentMethod;
+        this.status=paymentStatus;
+        this.order=order;
+        this.amount=amount;
     }
 
     public Long getId() {
@@ -115,5 +131,13 @@ public class PaymentRecord {
 
     public void setOrder(Order order) {
         this.order = order;
+    }
+
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 }
