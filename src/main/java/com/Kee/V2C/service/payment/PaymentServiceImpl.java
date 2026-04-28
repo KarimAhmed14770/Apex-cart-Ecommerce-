@@ -11,8 +11,6 @@ import com.Kee.V2C.exception.ResourceAlreadyExistsException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-
 @Service
 public class PaymentServiceImpl implements PaymentService{
 
@@ -24,40 +22,47 @@ public class PaymentServiceImpl implements PaymentService{
     }
 
     @Override
-    public Boolean processPayment(PaymentRequest paymentRequest, Order order){
-        if(paymentRequest.paymentMethod()==null) return false;//must provide a payment method
+    public Boolean processPayment(PaymentRequest paymentRequest, Order order) {
+        if (paymentRequest.paymentMethod() == null) return false;//must provide a payment method
 
-        if(paymentRequest.paymentMethod()== PaymentMethod.CASH_ON_DELIVERY){
-            if(paymentRequest.creditCardNumber()==null && paymentRequest.cvv()==null
-                    &&paymentRequest.idempotencyKey()==null) {
-                PaymentRecord paymentRecord=new PaymentRecord(PaymentMethod.CASH_ON_DELIVERY,PaymentStatus.PENDING
-                        ,order,order.getTotalPrice());
-                order.setPaymentRecord(paymentRecord);
-                paymentRecordRepository.save(paymentRecord);
+        if (paymentRequest.paymentMethod() == PaymentMethod.CASH_ON_DELIVERY) {
+            if (paymentRequest.creditCardNumber() == null && paymentRequest.cvv() == null
+                    && paymentRequest.cardHolderName() == null
+                    && paymentRequest.expiryDate() == null) {
+                if(paymentRequest.idempotencyKey()==null){
+                    throw new BadPaymentInfo("attach a key with order placement");
+                }
+                if(paymentRecordRepository.existsByIdempotencyKey(paymentRequest.idempotencyKey())){
+                    throw new ResourceAlreadyExistsException("this payment was already processed");
+                }
+                PaymentRecord paymentRecord = new PaymentRecord(paymentRequest.idempotencyKey(), PaymentMethod.CASH_ON_DELIVERY, PaymentStatus.PENDING
+                        , order, order.getTotalPrice());
+                    order.setPaymentRecord(paymentRecord);
+                    paymentRecordRepository.save(paymentRecord);//exception for multiple placed orders
+                //handled at controllers advice
                 return true;//payment successfull
-            }
-            else{
+            } else {
                 throw new BadPaymentInfo("Bad Payment Request");
             }
-        }
-        else{
+        } else {
+            if (paymentRequest.creditCardNumber() == null
+                    || paymentRequest.cvv() == null
+                    || paymentRequest.idempotencyKey() == null
+                    || paymentRequest.cardHolderName() == null
+                    || paymentRequest.expiryDate() == null
+                    || paymentRequest.creditCardNumber().length() != 16
+                    || paymentRequest.cvv().length() != 3) {
+                throw new BadPaymentInfo("Bad Card info");
+            }
             if(paymentRecordRepository.existsByIdempotencyKey(paymentRequest.idempotencyKey())){
                 throw new ResourceAlreadyExistsException("this payment was already processed");
             }
-            if(paymentRequest.creditCardNumber() != null
-                    && paymentRequest.cvv() != null
-                    && paymentRequest.idempotencyKey()!=null
-                    &&paymentRequest.creditCardNumber().length()==16
-                    && paymentRequest.cvv().length()==3 ){
-                PaymentRecord paymentRecord=new PaymentRecord(paymentRequest.idempotencyKey(),
-                        order, PaymentStatus.SUCCESS,PaymentMethod.CREDIT_CARD,order.getTotalPrice());
-                order.setPaymentRecord(paymentRecord);
-                paymentRecordRepository.save(paymentRecord);
-                return true;
+                    PaymentRecord paymentRecord = new PaymentRecord(paymentRequest.idempotencyKey(),
+                            order, PaymentStatus.SUCCESS, PaymentMethod.CREDIT_CARD, order.getTotalPrice());
+                        order.setPaymentRecord(paymentRecord);
+                        paymentRecordRepository.save(paymentRecord);//exception for multiple placed orders
+            //handled at controllers advice
+                    return true;
             }
-            else{
-               throw new BadPaymentInfo("Bad Card info");
-            }
-        }
     }
 }
