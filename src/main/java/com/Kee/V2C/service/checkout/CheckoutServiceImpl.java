@@ -44,11 +44,12 @@ public class CheckoutServiceImpl implements CheckoutService{
         cartService.cartStockValidationAndUpdate(cart);
         //Convert: Transform the Cart items into Order items and Order
         Order order=orderService.convertCartToOrder(checkOutRequest,cart);
+        //persist the order in the db
+        orderRepository.save(order);
         //process payment
         if(paymentService.processPayment(checkOutRequest.paymentRequest(),order)) {
             //payment successful
-            //persist the order in the db
-            orderRepository.save(order);
+
 
             //notify each vendor with his subOrder
 
