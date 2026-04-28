@@ -8,7 +8,9 @@ import com.Kee.V2C.dto.checkout.CheckOutRequest;
 import com.Kee.V2C.dto.checkout.CheckoutResponse;
 import com.Kee.V2C.entity.*;
 import com.Kee.V2C.exception.*;
+import com.Kee.V2C.service.cart.CartService;
 import com.Kee.V2C.service.order.OrderService;
+import com.Kee.V2C.service.payment.PaymentService;
 import com.Kee.V2C.utils.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,16 +25,22 @@ public class CheckoutServiceImpl implements CheckoutService{
     private final OrderRepository orderRepository;
     private final SecurityUtil securityUtil;
     private final CustomerRepository customerRepository;
+    private final PaymentService paymentService;
+    private final CartService cartService;
+
 
     public CheckoutServiceImpl(OrderService orderService,StockRepository stockRepository,
                                CartItemRepository cartItemRepository,OrderRepository orderRepository,
-                               SecurityUtil securityUtil,CustomerRepository customerRepository){
+                               SecurityUtil securityUtil,CustomerRepository customerRepository,
+                               PaymentService paymentService,CartService cartService){
         this.orderService=orderService;
         this.stockRepository=stockRepository;
         this.cartItemRepository=cartItemRepository;
         this.orderRepository=orderRepository;
         this.securityUtil=securityUtil;
         this.customerRepository=customerRepository;
+        this.paymentService=paymentService;
+        this.cartService=cartService;
     }
 
 
@@ -40,43 +48,32 @@ public class CheckoutServiceImpl implements CheckoutService{
     @Transactional //to roll back if anything occurs
     public CheckoutResponse checkOut(CheckOutRequest checkOutRequest){
         //Retrieve: Fetch the Cart from the database using the userId.
-        List<CartItem> cart=getCustomerCart();
+        List<CartItem> cart=cartService.getCustomerCart();
         //Validate: Check if every item in that cart is still in stock (The Atomic Shield).
-        cartStockValidationAndUpdate(cart);
+        cartService.cartStockValidationAndUpdate(cart);
         //Convert: Transform the Cart items into Order items and Order
         Order order=orderService.convertCartToOrder(checkOutRequest,cart);
-        orderRepository.save(order);
+        //process payment
+        if(paymentService.processPayment(checkOutRequest,order.getTotalPrice())) {
+            //payment successful
+            //persist the order in the db
+            orderRepository.save(order);
 
-        //empty the cart of the user on the db , this is better than deleting 1 by 1 in loop
-        cartItemRepository.deleteAllInBatch(cart);
+            //notify each vendor with his subOrder
 
-        //Respond: Return an OrderResponse.
-        return new CheckoutResponse(order.getId(),order.getTotalPrice(),order.getStatus().name(),
-                order.getOrderedAt(),order.getShippingAddress());
-    }
+            //empty the cart of the user on the db , this is better than deleting 1 by 1 in loop
+            cartItemRepository.deleteAllInBatch(cart);
 
-
-
-    private List<CartItem> getCustomerCart(){
-        List<CartItem> cart=cartItemRepository.findByCustomerIdWithDetails(getCurrentCustomer().getId());
-        if(cart.isEmpty()){
-            throw new CartEmptyException("your shopping cart is currently empty");
+            //Respond: Return an OrderResponse.
+            return new CheckoutResponse(order.getId(), order.getTotalPrice(), order.getStatus().name(),
+                    order.getOrderedAt(), order.getShippingAddress());
         }
-        return cart;
-    }
-
-    private void cartStockValidationAndUpdate(List<CartItem> cart){
-        int rowsUpdated=0;
-        for(CartItem cartItem:cart){
-            rowsUpdated= stockRepository.decrementProductStock(cartItem.getQuantity(),
-                    cartItem.getProduct().getId(),
-                    cartItem.getProduct().getVendor().getShop().getId());
-            if(rowsUpdated==0){
-                throw new InsufficientStockException("Product with id: "+cartItem.getProduct().getId()+
-                        " is out of stock");
-            }
+        else
+        {
+            throw new PaymentFailedException("Payment Failed");
         }
     }
+
 
     private Customer getCurrentCustomer(){
         Long id=securityUtil.getCurrentUserId();

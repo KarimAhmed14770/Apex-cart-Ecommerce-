@@ -3,6 +3,7 @@ package com.Kee.V2C.service.cart;
 import com.Kee.V2C.Repository.CartItemRepository;
 import com.Kee.V2C.Repository.CustomerRepository;
 import com.Kee.V2C.Repository.ProductRepository;
+import com.Kee.V2C.Repository.StockRepository;
 import com.Kee.V2C.dto.cart.CartItemRequest;
 import com.Kee.V2C.dto.cart.CartItemResponse;
 import com.Kee.V2C.dto.cart.CartResponse;
@@ -24,13 +25,16 @@ public class CartServiceImpl implements CartService{
     private final CartItemRepository cartItemRepository;
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
+    private final StockRepository stockRepository;
 
     public CartServiceImpl(SecurityUtil securityUtil,CartItemRepository cartItemRepository
-            ,CustomerRepository customerRepository,ProductRepository productRepository){
+            ,CustomerRepository customerRepository,ProductRepository productRepository,
+                           StockRepository stockRepository){
         this.cartItemRepository=cartItemRepository;
         this.securityUtil=securityUtil;
         this.customerRepository=customerRepository;
         this.productRepository=productRepository;
+        this.stockRepository=stockRepository;
     }
 
 
@@ -90,6 +94,28 @@ public class CartServiceImpl implements CartService{
             cartItemRepository.flush(); // Forces the delete to happen immediatly
         }
 
+    }
+    @Override
+    public List<CartItem> getCustomerCart(){
+        List<CartItem> cart=cartItemRepository.findByCustomerIdWithDetails(getCurrentCustomer().getId());
+        if(cart.isEmpty()){
+            throw new CartEmptyException("your shopping cart is currently empty");
+        }
+        return cart;
+    }
+
+    @Override
+    public void cartStockValidationAndUpdate(List<CartItem> cart){
+        int rowsUpdated=0;
+        for(CartItem cartItem:cart){
+            rowsUpdated= stockRepository.decrementProductStock(cartItem.getQuantity(),
+                    cartItem.getProduct().getId(),
+                    cartItem.getProduct().getVendor().getShop().getId());
+            if(rowsUpdated==0){
+                throw new InsufficientStockException("Product with id: "+cartItem.getProduct().getId()+
+                        " is out of stock");
+            }
+        }
     }
 
     private Customer getCurrentCustomer(){
