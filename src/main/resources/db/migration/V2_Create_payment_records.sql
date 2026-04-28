@@ -10,11 +10,10 @@ CREATE TABLE `payment_records` (
     `transaction_reference` varchar(255),
 	`created_at` datetime default current_timestamp,
     `processed_at` datetime default null,
-    `idempotency_key` varchar(36) ,
+    `idempotency_key` varchar(36) not null,
     `status` varchar(20) default 'PENDING',  -- FAILED,SUCCESS,PENDING
 	PRIMARY KEY (`id`),
     Constraint `payment_record_order_fk` Foreign key (`order_id`) REFERENCES orders(`id`),
 	UNIQUE INDEX idx_unique_idempotency_key (idempotency_key)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
-
 

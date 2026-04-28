@@ -62,7 +62,8 @@ public class PaymentRecord {
         this.amount=amount;
     }
 
-    public PaymentRecord(PaymentMethod paymentMethod,PaymentStatus paymentStatus,Order order, BigDecimal amount){
+    public PaymentRecord(String idempotencyKey,PaymentMethod paymentMethod,PaymentStatus paymentStatus,Order order, BigDecimal amount){
+        this.idempotencyKey=idempotencyKey;
         this.paymentMethod=paymentMethod;
         this.status=paymentStatus;
         this.order=order;
