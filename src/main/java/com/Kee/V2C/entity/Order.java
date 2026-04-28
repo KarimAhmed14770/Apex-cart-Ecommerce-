@@ -135,6 +135,13 @@ public class Order {
         subOrder.setOrder(this);
     }
 
+    public PaymentRecord getPaymentRecord() {
+        return paymentRecord;
+    }
+
+    public void setPaymentRecord(PaymentRecord paymentRecord) {
+        this.paymentRecord = paymentRecord;
+    }
 
     public void transitionTo(OrderStatus newStatus) {
         if (this.status == OrderStatus.DELIVERED || this.status == OrderStatus.CANCELED) {
