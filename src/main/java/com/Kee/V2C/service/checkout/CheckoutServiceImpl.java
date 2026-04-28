@@ -1,9 +1,8 @@
 package com.Kee.V2C.service.checkout;
 
 import com.Kee.V2C.Repository.CartItemRepository;
-import com.Kee.V2C.Repository.CustomerRepository;
+
 import com.Kee.V2C.Repository.OrderRepository;
-import com.Kee.V2C.Repository.StockRepository;
 import com.Kee.V2C.dto.checkout.CheckOutRequest;
 import com.Kee.V2C.dto.checkout.CheckoutResponse;
 import com.Kee.V2C.entity.*;
@@ -11,7 +10,6 @@ import com.Kee.V2C.exception.*;
 import com.Kee.V2C.service.cart.CartService;
 import com.Kee.V2C.service.order.OrderService;
 import com.Kee.V2C.service.payment.PaymentService;
-import com.Kee.V2C.utils.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,25 +18,18 @@ import java.util.List;
 @Service
 public class CheckoutServiceImpl implements CheckoutService{
     private final OrderService orderService;
-    private final StockRepository stockRepository;
     private final CartItemRepository cartItemRepository;
     private final OrderRepository orderRepository;
-    private final SecurityUtil securityUtil;
-    private final CustomerRepository customerRepository;
     private final PaymentService paymentService;
     private final CartService cartService;
 
 
-    public CheckoutServiceImpl(OrderService orderService,StockRepository stockRepository,
-                               CartItemRepository cartItemRepository,OrderRepository orderRepository,
-                               SecurityUtil securityUtil,CustomerRepository customerRepository,
-                               PaymentService paymentService,CartService cartService){
+    public CheckoutServiceImpl(OrderService orderService,CartItemRepository cartItemRepository,
+                               OrderRepository orderRepository, PaymentService paymentService,
+                               CartService cartService){
         this.orderService=orderService;
-        this.stockRepository=stockRepository;
         this.cartItemRepository=cartItemRepository;
         this.orderRepository=orderRepository;
-        this.securityUtil=securityUtil;
-        this.customerRepository=customerRepository;
         this.paymentService=paymentService;
         this.cartService=cartService;
     }
@@ -54,7 +45,7 @@ public class CheckoutServiceImpl implements CheckoutService{
         //Convert: Transform the Cart items into Order items and Order
         Order order=orderService.convertCartToOrder(checkOutRequest,cart);
         //process payment
-        if(paymentService.processPayment(checkOutRequest,order.getTotalPrice())) {
+        if(paymentService.processPayment(checkOutRequest.paymentRequest(),order)) {
             //payment successful
             //persist the order in the db
             orderRepository.save(order);
@@ -74,11 +65,5 @@ public class CheckoutServiceImpl implements CheckoutService{
         }
     }
 
-
-    private Customer getCurrentCustomer(){
-        Long id=securityUtil.getCurrentUserId();
-        return customerRepository.findByIdWithCredentials(id).
-                orElseThrow(()->new UserNotFoundException("customer not found"));
-    }
 
 }
