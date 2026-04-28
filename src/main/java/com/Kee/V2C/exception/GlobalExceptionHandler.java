@@ -1,6 +1,7 @@
 package com.Kee.V2C.exception;
 
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -164,11 +165,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<UserErrorResponse> handleException
             (ResourceAlreadyExistsException resourceAlreadyExistsException){
         UserErrorResponse error=new UserErrorResponse();
-        error.setStatus(HttpStatus.BAD_REQUEST.value());
+        error.setStatus(HttpStatus.CONFLICT.value());
         error.setMessage(resourceAlreadyExistsException.getMessage());
         error.setTimeStamp(System.currentTimeMillis());
 
-        return new ResponseEntity<>(error,HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(error,HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler
@@ -226,6 +227,15 @@ public class GlobalExceptionHandler {
         error.setTimeStamp(System.currentTimeMillis());
 
         return new ResponseEntity<>(error,HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<UserErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        UserErrorResponse error = new UserErrorResponse();
+        error.setStatus(HttpStatus.CONFLICT.value());
+        error.setMessage("this request was already processed");
+        error.setTimeStamp(System.currentTimeMillis());
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler
