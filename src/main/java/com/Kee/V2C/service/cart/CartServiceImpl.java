@@ -118,6 +118,11 @@ public class CartServiceImpl implements CartService{
         }
     }
 
+    @Override
+    public void deleteCart(List<CartItem> cartItems){
+        cartItemRepository.deleteAllInBatch(cartItems);//empty the cart of the user on the db , this is better than deleting 1 by 1 in loop
+    }
+
     private Customer getCurrentCustomer(){
         Long id=securityUtil.getCurrentUserId();
         return customerRepository.findByIdWithCredentials(id).

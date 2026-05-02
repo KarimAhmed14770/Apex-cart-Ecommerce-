@@ -82,6 +82,7 @@ public class OrderServiceImpl implements OrderService {
         else{
             order.setShippingAddress(customer.getShippingAddress());
         }
+        orderRepository.save(order); //persist the order in the db
         return order;
     }
 

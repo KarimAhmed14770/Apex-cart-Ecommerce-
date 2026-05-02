@@ -10,5 +10,6 @@ public interface CartService {
     CartResponse addToCart(CartItemRequest cartItemRequest);
     CartResponse viewMyCart();
     List<CartItem> getCustomerCart();
+    void deleteCart(List<CartItem> cartItems);
     void cartStockValidationAndUpdate(List<CartItem> cart);
 }
