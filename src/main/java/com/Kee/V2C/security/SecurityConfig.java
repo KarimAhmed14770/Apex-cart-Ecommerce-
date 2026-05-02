@@ -66,7 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/product-models/**").hasAnyRole("SELLER","ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/vendors/**","/api/products/vendor/**"
-                                ,"/api/shops/**","/api/stocks/**").hasRole("SELLER")
+                                ,"/api/shops/**","/api/stocks/**","/api/sub-orders/**").hasRole("SELLER")
                         .requestMatchers("/api/test/my-profile","/api/carts/**","/api/checkouts"
                         ,"/api/invoices/**","/api/customers/**","/api/orders/**","/api/products","/api/products/*").hasRole("CUSTOMER")
 
