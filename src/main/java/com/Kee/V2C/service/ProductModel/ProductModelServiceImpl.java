@@ -1,18 +1,14 @@
 package com.Kee.V2C.service.ProductModel;
 
-import com.Kee.V2C.Repository.ProductModelRepository;
-import com.Kee.V2C.Repository.ProductRequestRepository;
-import com.Kee.V2C.Repository.VendorRepository;
-import com.Kee.V2C.dto.product.NewProductRequest;
-import com.Kee.V2C.dto.product.ProductModelResponse;
-import com.Kee.V2C.dto.product.ProductRequestResponse;
-import com.Kee.V2C.entity.ProductModel;
-import com.Kee.V2C.entity.ProductRequest;
-import com.Kee.V2C.entity.Vendor;
+import com.Kee.V2C.Repository.*;
+import com.Kee.V2C.dto.product.*;
+import com.Kee.V2C.entity.*;
 import com.Kee.V2C.enums.PathFolder;
 import com.Kee.V2C.enums.ProductModelStatus;
 import com.Kee.V2C.enums.ProductRequestStatus;
 import com.Kee.V2C.exception.ResourceNotFoundException;
+import com.Kee.V2C.mapper.ProductMapper;
+import com.Kee.V2C.mapper.ProductModelMapper;
 import com.Kee.V2C.service.Image.ImageService;
 import com.Kee.V2C.specifications.ProductModelSpecs;
 import com.Kee.V2C.utils.SecurityUtil;
@@ -28,21 +24,73 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductModelServiceImpl implements ProductModelService{
 
     private final ProductModelRepository productModelRepository;
-    private final ProductRequestRepository productRequestRepository;
     private final ImageService imageService;
-    private final SecurityUtil securityUtil;
     private final VendorRepository vendorRepository;
+    private final BrandRepository brandRepository;
+    private final SubCategoryRepository subCategoryRepository;
+    private final ProductModelMapper productModelMapper;
+
     @Autowired
-    public ProductModelServiceImpl(ProductModelRepository productModelRepository,ProductRequestRepository productRequestRepository,
-                                   ImageService imageService,SecurityUtil securityUtil,
-                                   VendorRepository vendorRepository){
+    public ProductModelServiceImpl(ProductModelRepository productModelRepository, ImageService imageService,
+                                   VendorRepository vendorRepository,BrandRepository brandRepository,
+                                   SubCategoryRepository subCategoryRepository, ProductModelMapper productModelMapper){
         this.productModelRepository=productModelRepository;
-        this.productRequestRepository=productRequestRepository;
         this.imageService=imageService;
-        this.securityUtil=securityUtil;
         this.vendorRepository=vendorRepository;
+        this.brandRepository=brandRepository;
+        this.subCategoryRepository=subCategoryRepository;
+        this.productModelMapper=productModelMapper;
 
     }
+
+
+
+
+    @Override
+    @Transactional
+    public ProductModelResponse addProductModel(ProductModelRegisterRequest productModelRegisterRequest){
+        ProductModel productModel=convertProductModelRequestToProductModel(productModelRegisterRequest);
+        productModelRepository.save(productModel);
+        return convertProductModelToDto(productModel);
+    }
+
+    @Override
+    @Transactional
+    public ProductModelResponse updateProductModel(Long id, ProductModelUpdateRequest productModelUpdateRequest){
+        ProductModel productModel=productModelRepository.findById(id)
+                .orElseThrow(()->new ResourceNotFoundException("Product Model with id: "+id+" not found"));
+
+        productModelMapper.updateProductModelFromDto(productModelUpdateRequest,productModel);
+        if(productModelUpdateRequest.image()!=null && !productModelUpdateRequest.image().isEmpty()) {
+            String updated_img = imageService.saveImage(productModelUpdateRequest.image(), PathFolder.MODELS);
+            productModel.setImageUrl(updated_img);
+        }
+        productModelRepository.save(productModel);
+
+        return convertProductModelToDto(productModel);
+    }
+
+    @Override
+    @Transactional
+    public ProductModelResponse softDeleteProductModel(Long id){
+        ProductModel productModel=productModelRepository.findById(id)
+                .orElseThrow(()->new ResourceNotFoundException("Product Model with id: "+id+" not found"));
+
+        productModel.setStatus(ProductModelStatus.DISABLED);
+        productModelRepository.save(productModel);
+
+        return convertProductModelToDto(productModel);
+
+    }
+
+    public Page<ProductModelResponse> searchProductModel(String name, String description, Long ownerId,
+                                                         Long subCategoryId, Long brandId, Boolean isGlobal,
+                                                         ProductModelStatus status, Pageable page) {
+        Page<ProductModel> productModels=getProductModelsByAttributes(name, description, ownerId,
+                subCategoryId, brandId, isGlobal, status, page);
+        return productModels.map(this::convertProductModelToDto);
+    }
+
 
     @Override
     public ProductModel getProductModelById(Long id){
@@ -77,19 +125,6 @@ public class ProductModelServiceImpl implements ProductModelService{
         return productModels;
     }
 
-    @Override
-    @Transactional
-    public ProductRequestResponse requestNewProduct(NewProductRequest newProductRequest){
-        Vendor vendor=getCurrentVendor();
-        ProductRequest productRequest=new ProductRequest(newProductRequest.name(), newProductRequest.description(),
-                imageService.saveImage(newProductRequest.imageFile(), PathFolder.PRODUCT_REQUESTS), newProductRequest.isGlobal(), ProductRequestStatus.PENDING,vendor);
-        productRequestRepository.save(productRequest);
-        return new ProductRequestResponse(
-                productRequest.getId(), productRequest.getName(), productRequest.getDescription(),
-                productRequest.getImageUrl(), productRequest.getGlobal(),productRequest.getStatus()
-        );
-
-    }
 
     public ProductModelResponse convertProductModelToDto(ProductModel productModel){
         return new ProductModelResponse(
@@ -105,11 +140,42 @@ public class ProductModelServiceImpl implements ProductModelService{
         );
     }
 
-    private Vendor getCurrentVendor(){
-        Long userId=securityUtil.getCurrentUserId();
-        Vendor vendor= vendorRepository.findById(userId)
-                .orElseThrow(()->new UsernameNotFoundException("Seller with id: "
-                        +userId+"does not exist"));
-        return vendor;
+
+    private ProductModel convertProductModelRequestToProductModel(ProductModelRegisterRequest productModelRegisterRequest){
+        Brand brand=brandRepository.findById(productModelRegisterRequest.brandId()).orElseThrow(
+                ()-> new ResourceNotFoundException("Brand with id: "+ productModelRegisterRequest.brandId()+
+                        " not found.")
+        );
+        SubCategory category=subCategoryRepository.findById(productModelRegisterRequest.subCategoryId()).orElseThrow(
+                ()->new ResourceNotFoundException("category with id: "+ productModelRegisterRequest.subCategoryId()+
+                        " is not found.")
+        );
+        Vendor vendor=null;
+        if(!productModelRegisterRequest.isGlobal()){
+            vendor=vendorRepository.findById(productModelRegisterRequest.vendorId()).orElseThrow(
+                    ()->new ResourceNotFoundException("vendor with id: "+ productModelRegisterRequest.vendorId()+
+                            " is not found.")
+            );
+        }
+        ProductModel productModel = new ProductModel(
+                productModelRegisterRequest.name(),
+                productModelRegisterRequest.description(),
+                imageService.saveImage(productModelRegisterRequest.image(), PathFolder.MODELS),
+                vendor,
+                productModelRegisterRequest.isGlobal(),
+                productModelRegisterRequest.status(),
+                brand,
+                category
+        );
+        brand.addProductModel(productModel);
+        category.addProductModel(productModel);
+        if(vendor!=null){
+            vendor.addProductModel(productModel);
+        }
+        return productModel;
     }
+
+
+
+
 }
