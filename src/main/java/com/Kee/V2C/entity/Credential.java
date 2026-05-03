@@ -55,6 +55,10 @@ public class Credential {
         this.email=email;
         this.status = status;
     }
+    public Credential(Long id,Role role) {
+        this.id=id;
+        this.role = role;
+    }
 
     public Long getId() {
         return id;
