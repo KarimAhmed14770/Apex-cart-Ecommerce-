@@ -41,7 +41,7 @@ A full-stack multi-vendor e-commerce REST API built with Spring Boot, featuring 
 - `@TransactionalEventListener(AFTER_COMMIT)` — notifications only fire after the transaction commits, preventing ghost notifications on rollback
 - One-time stream ticket (30 s Caffeine TTL) for SSE authentication without exposing JWT in query params
 - JPA `Specification` API for dynamic multi-field product filtering
-- Flyway for reproducible schema versioning
+- SQL migration scripts in `db/migration/` for reproducible schema setup
 
 ## Prerequisites
 
@@ -58,13 +58,33 @@ git clone https://github.com/KarimAhmed14770/Kee-V2C-Platform.git
 cd Kee-V2C-Platform
 ```
 
-### 2. Create the database
+### 2. Create the database and run the schema scripts
 
 ```sql
 CREATE DATABASE kee_v2c_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Flyway will create all tables automatically on first startup.
+Then run the SQL files in `src/main/resources/db/migration/` in the order below (order matters because of foreign key dependencies). You can use MySQL Workbench, DBeaver, or the MySQL CLI:
+
+```bash
+# 1. Core users: credentials, customers, vendors, roles (no dependencies)
+mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_customer_vendor_credentials_tables.sql
+
+# 2. Catalogue: categories, sub-categories, brands, product models, products, shops, stock (needs vendors)
+mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_categories_products_shops_stock.sql
+
+# 3. Cart (needs customers + products)
+mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_cart_item_table.sql
+
+# 4. Product model requests (needs vendors)
+mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_Product_requests_table.sql
+
+# 5. Orders, sub-orders, order items (needs customers + vendors + products)
+mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_customer_order_orderitems_tables.sql
+
+# 6. Payment records (needs orders — must be last)
+mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_payment_records.sql
+```
 
 ### 3. Configure application properties
 
