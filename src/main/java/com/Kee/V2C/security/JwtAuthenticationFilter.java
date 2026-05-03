@@ -1,6 +1,13 @@
 package com.Kee.V2C.security;
 
+import com.Kee.V2C.Repository.VendorRepository;
+import com.Kee.V2C.entity.Credential;
+import com.Kee.V2C.entity.Role;
+import com.Kee.V2C.entity.Vendor;
+import com.Kee.V2C.enums.UserRoles;
+import com.Kee.V2C.exception.ResourceNotFoundException;
 import com.Kee.V2C.service.Authentication.JwtService;
+import com.Kee.V2C.service.notification.NotificationService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,30 +29,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final NotificationService notificationService;
 
     @Autowired
-    public JwtAuthenticationFilter(JwtService jwtService,UserDetailsService userDetailsService){
+    public JwtAuthenticationFilter(JwtService jwtService,UserDetailsService userDetailsService,
+                                   NotificationService notificationService){
         this.jwtService=jwtService;
         this.userDetailsService=userDetailsService;
+        this.notificationService=notificationService;
     }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,@NonNull HttpServletResponse response
             ,@NonNull FilterChain filterChain) throws ServletException, IOException{
         final String authorizationHeader=request.getHeader("Authorization");
+        final String requestUrl=request.getRequestURI();
+        final String ticket=request.getParameter("token");
         final String jwt;
         final String userName;
 
-        if(authorizationHeader==null ||!authorizationHeader.startsWith("Bearer")){
-            filterChain.doFilter(request,response);//if no token or if no authorization just move
-            //to the next filter, this is for pages with no security like register,login
-            return;
+        if(requestUrl.contains("/api/notifications/stream") && ticket!=null){
+            authenticateViaTicket(ticket,request);
         }
-        jwt=authorizationHeader.substring(7);//trimming the bearer word
-        userName=jwtService.extractUserName(jwt);
-        // Only proceed if we have a username and the user isn't already authenticated in this thread
-        if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
+        if (SecurityContextHolder.getContext().getAuthentication() == null && authorizationHeader != null
+        && authorizationHeader.startsWith("Bearer ")) {
+            jwt=authorizationHeader.substring(7);//trimming the bearer word
+            userName=jwtService.extractUserName(jwt);
             UserDetails userDetails = userDetailsService.loadUserByUsername(userName);
 
             if (jwtService.isTokenValid(jwt, userDetails) &&userDetails.isEnabled()) {
@@ -73,4 +83,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    private void authenticateViaTicket(String ticket, HttpServletRequest request) {
+        Long vendorId = notificationService.validateAndRemoveTicket(ticket);
+        if (vendorId != null) {
+
+
+            Credential credential = new Credential(vendorId, new Role(UserRoles.ROLE_SELLER));
+            UserDetails userDetails = new UserDetailsImpl(credential);
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null, // Credentials are not needed after JWT validation
+                    userDetails.getAuthorities()
+            );
+            // Add request-specific details (like IP address) to the token
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+            // save it to SecurityContextHolder
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+        }
+    }
+
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return true;
+    }
 }
