@@ -64,11 +64,10 @@ public class SecurityConfig {
                                 ,"/api/categories/**","/api/brands/**","/api/notifications/stream",
                                         "/").permitAll()// Make registration public
                         .requestMatchers("/api/product-models/**").hasAnyRole("SELLER","ADMIN")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/vendors/**","/api/products/vendor/**"
-                                ,"/api/shops/**","/api/stocks/**","/api/sub-orders/**").hasRole("SELLER")
+                                ,"/api/shops/**","/api/stocks/**","/api/sub-orders/**").hasAnyRole("SELLER","ADMIN")
                         .requestMatchers("/api/test/my-profile","/api/carts/**","/api/checkouts"
-                        ,"/api/invoices/**","/api/customers/**","/api/orders/**","/api/products","/api/products/*").hasRole("CUSTOMER")
+                                ,"/api/invoices/**","/api/customers/**","/api/orders/**","/api/products","/api/products/*").hasAnyRole("CUSTOMER","ADMIN")
 
                         .anyRequest().authenticated() //any request of those are protected
         ).sessionManagement(session->
