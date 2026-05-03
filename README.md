@@ -7,7 +7,7 @@ A full-stack multi-vendor e-commerce REST API built with Spring Boot, featuring 
 | Layer | Technology |
 |---|---|
 | Backend | Java 21, Spring Boot 4, Spring Security, Spring Data JPA |
-| Database | MySQL + Flyway migrations |
+| Database | MySQL 8 |
 | Auth | JWT (jjwt 0.12) + role-based access control |
 | Mapping | MapStruct |
 | Caching | Caffeine |
@@ -37,11 +37,10 @@ A full-stack multi-vendor e-commerce REST API built with Spring Boot, featuring 
 - Vendor oversight
 
 **Architecture highlights**
-- SOLID principles applied across service layer (SRP, OCP, DIP)
+- SOLID principles applied across the service layer (SRP, OCP, DIP)
 - `@TransactionalEventListener(AFTER_COMMIT)` — notifications only fire after the transaction commits, preventing ghost notifications on rollback
-- One-time stream ticket (30 s Caffeine TTL) for SSE authentication without exposing JWT in query params
+- One-time stream ticket (30 s Caffeine TTL) for SSE authentication without exposing the JWT in query params
 - JPA `Specification` API for dynamic multi-field product filtering
-- SQL migration scripts in `db/migration/` for reproducible schema setup
 
 ## Prerequisites
 
@@ -98,19 +97,17 @@ Then open `src/main/resources/application.properties` and fill in:
 |---|---|
 | `spring.datasource.username` | Your MySQL username |
 | `spring.datasource.password` | Your MySQL password |
-| `application.security.jwt.secret-key` | Base64 secret, min 256 bits (`openssl rand -base64 32`) |
+| `application.security.jwt.secret-key` | Base64 secret, min 256 bits — generate with `openssl rand -base64 32` |
 | `uploads_directory` | Absolute path to an existing writable directory for images |
 | `app.cors.allowed-origins` | Frontend origin, e.g. `http://localhost:8080` |
 
 ### 4. Run the application
 
 ```bash
+# Linux / macOS
 ./mvnw spring-boot:run
-```
 
-Or on Windows:
-
-```bash
+# Windows
 mvnw.cmd spring-boot:run
 ```
 
@@ -127,24 +124,24 @@ http://localhost:8080/swagger-ui.html
 The frontend is served at:
 
 ```
-http://localhost:8080/index.html        # Customer storefront
-http://localhost:8080/vendor.html       # Vendor dashboard
-http://localhost:8080/admin.html        # Admin panel
+http://localhost:8080/index.html     # Customer storefront
+http://localhost:8080/vendor.html    # Vendor dashboard
+http://localhost:8080/admin.html     # Admin panel
 ```
 
 ## Running Tests
 
-Tests use an H2 in-memory database and do not require MySQL to be running.
+Tests use an H2 in-memory database and do not require MySQL.
 
 ```bash
 ./mvnw test
 ```
 
-The test suite covers:
-
-- **`CartStockValidationTest`** — unit tests for stock decrement logic (Mockito)
-- **`GlobalExceptionHandlerTest`** — unit tests for 409 idempotency and 400 stock error responses
-- **`JwtSecurityTest`** — integration tests verifying that protected endpoints reject unauthenticated requests and public endpoints remain accessible
+| Test class | Type | What it covers |
+|---|---|---|
+| `CartStockValidationTest` | Unit (Mockito) | Stock decrement — insufficient stock throws, sufficient stock passes |
+| `GlobalExceptionHandlerTest` | Unit | 409 on duplicate order, 400 on insufficient stock |
+| `JwtSecurityTest` | Integration (MockMvc) | Protected endpoints return 403 without token or with corrupt token; public endpoints return 200 |
 
 ## Project Structure
 
@@ -152,17 +149,17 @@ The test suite covers:
 src/
 ├── main/
 │   ├── java/com/Kee/V2C/
-│   │   ├── config/          # CORS, web config
+│   │   ├── config/          # CORS and web configuration
 │   │   ├── entity/          # JPA entities
-│   │   ├── dto/             # Request/response DTOs
+│   │   ├── dto/             # Request / response DTOs
 │   │   ├── Repository/      # Spring Data JPA repositories
 │   │   ├── rest/            # REST controllers
-│   │   ├── security/        # JWT filter, security config, UserDetails
+│   │   ├── security/        # JWT filter, SecurityConfig, UserDetails
 │   │   ├── service/         # Business logic (one interface per domain)
-│   │   ├── events/          # Spring application events (OrderPlacedEvent)
+│   │   ├── events/          # Application events (OrderPlacedEvent)
 │   │   └── exception/       # Global exception handler
 │   └── resources/
-│       ├── db/migration/    # Flyway SQL migrations
+│       ├── db/migration/    # SQL schema scripts (run manually in order)
 │       └── static/          # Frontend (HTML, CSS, JS)
 └── test/
     └── java/com/Kee/V2C/
@@ -173,7 +170,7 @@ src/
 
 ## API Overview
 
-| Domain | Base Path | Role |
+| Domain | Base Path | Access |
 |---|---|---|
 | Authentication | `/api/auth/**` | Public |
 | Categories & Brands | `/api/categories/**`, `/api/brands/**` | Public |
