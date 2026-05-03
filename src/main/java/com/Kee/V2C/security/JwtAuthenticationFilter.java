@@ -56,6 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         && authorizationHeader.startsWith("Bearer ")) {
             jwt=authorizationHeader.substring(7);//trimming the bearer word
             userName=jwtService.extractUserName(jwt);
+            if(userName!=null){
             UserDetails userDetails = userDetailsService.loadUserByUsername(userName);
 
             if (jwtService.isTokenValid(jwt, userDetails) &&userDetails.isEnabled()) {
@@ -71,6 +72,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // save it to SecurityContextHolder
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
             }
         }
         /*If userName is null, it means the JWT was corrupted or didn't contain a "Subject" claim.
