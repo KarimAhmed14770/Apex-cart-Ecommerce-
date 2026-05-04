@@ -106,7 +106,7 @@ Then open `src/main/resources/application.properties` and fill in:
 | `spring.datasource.url` | Already set to `Kee_V2C_Platform` — change only if you named your database differently |
 | `spring.datasource.username` | Your MySQL username |
 | `spring.datasource.password` | Your MySQL password |
-| `application.security.jwt.secret-key` | Base64 secret, min 256 bits — generate with `openssl rand -base64 32` |
+| `application.security.jwt.secret-key` | Base64 secret, min 256 bits — generate with `openssl rand -base64 32` (Linux/macOS/Git Bash) or `[Convert]::ToBase64String((1..32 \| % { [byte](Get-Random -Max 256) }))` (PowerShell) |
 | `uploads_directory` | Absolute path to a **writable directory** where images will be stored (see step 4) |
 | `app.cors.allowed-origins` | Frontend origin, e.g. `http://localhost:8080` |
 
