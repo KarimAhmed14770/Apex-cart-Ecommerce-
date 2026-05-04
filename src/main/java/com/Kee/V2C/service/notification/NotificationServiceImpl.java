@@ -78,7 +78,7 @@ public class NotificationServiceImpl implements NotificationService{
                 sseEmitter.send(SseEmitter.event().name("new-order")
                         .data("SubOrder #" + orderPlacedEvent.getSubOrderId()));
             }
-            catch (IOException e){
+            catch (Exception e){
                 deadEmitters.add(sseEmitter);
             }
         }
