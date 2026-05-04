@@ -1,5 +1,12 @@
 package com.Kee.V2C.service.cart;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.Kee.V2C.Repository.CartItemRepository;
 import com.Kee.V2C.Repository.CustomerRepository;
 import com.Kee.V2C.Repository.ProductRepository;
@@ -10,14 +17,12 @@ import com.Kee.V2C.dto.cart.CartResponse;
 import com.Kee.V2C.entity.CartItem;
 import com.Kee.V2C.entity.Customer;
 import com.Kee.V2C.entity.Product;
-import com.Kee.V2C.exception.*;
+import com.Kee.V2C.exception.CartEmptyException;
+import com.Kee.V2C.exception.CartItemNotFoundException;
+import com.Kee.V2C.exception.InsufficientStockException;
+import com.Kee.V2C.exception.ProductNotFoundException;
+import com.Kee.V2C.exception.UserNotFoundException;
 import com.Kee.V2C.utils.SecurityUtil;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class CartServiceImpl implements CartService{
@@ -39,7 +44,7 @@ public class CartServiceImpl implements CartService{
 
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = CartEmptyException.class)
     public CartResponse addToCart(CartItemRequest cartItemRequest){
         Customer customer=getCurrentCustomer();
         Product product=getProductById(cartItemRequest.productId());
