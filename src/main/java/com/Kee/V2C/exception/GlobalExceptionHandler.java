@@ -10,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -236,6 +237,11 @@ public class GlobalExceptionHandler {
         error.setMessage("this request was already processed");
         error.setTimeStamp(System.currentTimeMillis());
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    public void handleAsyncTimeout(AsyncRequestTimeoutException ex) {
+        // SSE connection timed out — normal lifecycle, client reconnects automatically
     }
 
     @ExceptionHandler
