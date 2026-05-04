@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>KeeConnect – Vendor Dashboard</title>
+  <link rel="stylesheet" href="app.css"/>
+  <style>
+    /* vendor product cards */
+    .v-card { width:240px; flex-shrink:0; display:flex; flex-direction:column; }
+    .v-card-img { width:100%; aspect-ratio:4/3; object-fit:cover; background:var(--surface2); display:block; }
+    .v-card-ph  { width:100%; aspect-ratio:4/3; background:var(--surface2); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.8rem; }
+    .v-card-body { padding:10px 14px; flex:1; display:flex; flex-direction:column; }
+    .v-card-name { font-weight:600; font-size:.9rem; color:var(--navy); margin-bottom:.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .v-card-desc { font-size:.78rem; color:var(--muted); margin-bottom:.4rem; flex:1; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .v-card-foot { display:flex; align-items:center; justify-content:space-between; padding-top:.4rem; border-top:1px solid var(--border); }
+    .v-card-price { font-size:.95rem; font-weight:700; color:var(--accent); }
+    .v-card-stock { font-size:.75rem; color:var(--muted); }
+    .v-card-actions { display:flex; align-items:center; justify-content:space-between; margin-top:.5rem; gap:.4rem; }
+    /* product grid */
+    #shopProductsGrid { display:flex; flex-wrap:wrap; gap:1rem; }
+
+    /* notification bell */
+    .notif-wrap { position:relative; }
+    .notif-btn  { background:none; border:none; cursor:pointer; font-size:1.25rem; padding:.3rem .5rem; border-radius:var(--radius); line-height:1; transition:background .15s; }
+    .notif-btn:hover { background:var(--surface2); }
+    .notif-badge {
+      display:none; position:absolute; top:2px; right:2px;
+      background:var(--accent); color:#fff; border-radius:50%;
+      width:17px; height:17px; font-size:.6rem; font-weight:700;
+      align-items:center; justify-content:center; pointer-events:none;
+    }
+    .notif-badge.show { display:flex; }
+    .notif-panel {
+      display:none; position:absolute; right:0; top:calc(100% + 8px);
+      width:300px; background:#fff; border:1px solid var(--border);
+      border-radius:var(--radius); box-shadow:0 8px 28px rgba(0,0,0,.13);
+      z-index:9999;
+    }
+    .notif-panel.show { display:block; }
+    .notif-panel-head {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:.65rem 1rem; border-bottom:1px solid var(--border);
+    }
+    .notif-item {
+      display:flex; flex-direction:column; gap:.2rem;
+      padding:.65rem 1rem; border-bottom:1px solid var(--border);
+      font-size:.83rem;
+    }
+    .notif-item:last-child { border-bottom:none; }
+    .notif-item-title { font-weight:600; color:var(--navy); }
+    .notif-item-time  { font-size:.73rem; color:var(--muted); }
+    @keyframes bell-ring {
+      0%,100% { transform:rotate(0); }
+      15%      { transform:rotate(20deg); }
+      30%      { transform:rotate(-18deg); }
+      45%      { transform:rotate(14deg); }
+      60%      { transform:rotate(-10deg); }
+      75%      { transform:rotate(6deg); }
+    }
+    .bell-ring { animation:bell-ring .6s ease; }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Nav ──────────────────────────────────────── -->
+<nav class="topnav">
+  <div style="font-family:'Fraunces',serif;font-size:1.25rem;font-weight:800;color:var(--navy);letter-spacing:-.5px;white-space:nowrap;flex-shrink:0;">
+    Kee<span style="color:var(--accent);">Connect</span>
+  </div>
+
+  <!-- right-side actions pushed to the far right -->
+  <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+    <span id="navName" style="font-size:.88rem;color:var(--muted);white-space:nowrap;"></span>
+
+    <!-- notification bell -->
+    <div class="notif-wrap" id="notifWrap">
+      <button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()" title="Notifications">🔔</button>
+      <span class="notif-badge" id="notifBadge">0</span>
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-panel-head">
+          <span style="font-weight:700;font-size:.88rem;color:var(--navy);">New Orders</span>
+          <button class="btn btn-ghost btn-sm" onclick="clearNotifs()">Clear</button>
+        </div>
+        <div id="notifList" style="max-height:300px;overflow-y:auto;">
+          <div id="notifEmpty" style="text-align:center;padding:1.5rem;font-size:.83rem;color:var(--muted);">No new orders</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" onclick="doLogout()" style="white-space:nowrap;">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ── Shell ────────────────────────────────────────── -->
+<div class="shell">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Dashboard</div>
+    <a class="sidebar-link active" onclick="switchSection('profile')">👤 My Profile</a>
+    <a class="sidebar-link"        onclick="switchSection('shop')">🏪 My Shop</a>
+    <a class="sidebar-link"        onclick="switchSection('models')">🔍 Product Models</a>
+    <a class="sidebar-link"        onclick="switchSection('requests')">📦 Product Requests</a>
+    <a class="sidebar-link"        onclick="switchSection('orders')">📋 My Orders</a>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- ══ PROFILE ══════════════════════════════════ -->
+    <section id="secProfile" class="section active">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">My Profile</h1>
+          <p class="page-sub">Your vendor account information</p>
+        </div>
+      </div>
+
+      <!-- ── Profile card ── -->
+      <div class="card" style="max-width:680px;">
+
+        <!-- Card top: avatar + name + status + edit button -->
+        <div style="display:flex;align-items:center;gap:1.25rem;padding:1.5rem 1.5rem 1.25rem;border-bottom:1px solid var(--border);">
+          <div id="profileAvatarWrap" style="flex-shrink:0;">
+            <div class="thumb-letter"
+                 style="width:80px;height:80px;border-radius:50%;font-size:1.8rem;">?</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:1.2rem;font-weight:700;color:var(--navy);margin-bottom:.3rem;" id="viewName">—</div>
+            <span id="profileStatusBadge" class="badge">—</span>
+          </div>
+          <button class="btn btn-ghost" id="editProfileBtn" onclick="enterEditMode()"
+                  style="flex-shrink:0;">✏ Edit</button>
+        </div>
+
+        <!-- Card body: info fields -->
+        <div id="profileView" style="padding:1.25rem 1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;">
+          <div>
+            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:.3rem;">Vendor ID</div>
+            <div style="font-weight:600;color:var(--navy);" id="viewId">—</div>
+          </div>
+          <div>
+            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:.3rem;">Rating</div>
+            <div style="font-weight:600;color:var(--navy);" id="viewRating">—</div>
+          </div>
+          <div style="grid-column:1/-1;">
+            <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:.3rem;">Address</div>
+            <div style="font-weight:600;color:var(--navy);" id="viewAddress">—</div>
+          </div>
+        </div>
+
+        <!-- Approval notice — shown only when not active -->
+        <div id="approvalNotice" style="display:none;margin:0 1.5rem 1.25rem;background:rgba(212,84,58,.07);border:1px solid rgba(212,84,58,.25);border-radius:var(--radius);padding:.75rem 1rem;font-size:.85rem;color:var(--accent);">
+          ⚠ Your vendor account is pending admin approval. Your shop won't be visible until approved.
+        </div>
+
+        <!-- Edit form — hidden by default, shown in place of info fields -->
+        <form id="profileEdit" onsubmit="saveProfile(event)" style="display:none;padding:1.25rem 1.5rem;border-top:1px solid var(--border);">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Name</label>
+              <input class="input" id="pName" type="text" placeholder="Your vendor name"/>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Address</label>
+              <input class="input" id="pAddress" type="text" placeholder="Street, Building, City…"/>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label class="form-label">Profile Image</label>
+            <input type="file" accept="image/*" class="input" id="pImageFile" onchange="previewProfileImage(this)"/>
+            <img id="pImagePreview" src="" alt="" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover;margin-top:.5rem;border:2px solid var(--border);"/>
+          </div>
+          <div style="display:flex;gap:.75rem;">
+            <button class="btn btn-primary" type="submit" id="saveProfileBtn">Save Changes</button>
+            <button class="btn btn-ghost" type="button" onclick="cancelEdit()">Cancel</button>
+          </div>
+        </form>
+
+      </div>
+    </section>
+
+    <!-- ══ SHOP ════════════════════════════════════ -->
+    <section id="secShop" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">My Shop</h1>
+          <p class="page-sub">Your store and product inventory</p>
+        </div>
+      </div>
+
+      <div id="shopLoading" style="display:flex;justify-content:center;padding:3rem;">
+        <div class="spinner"></div>
+      </div>
+
+      <!-- ── No shop yet ── -->
+      <div id="noShop" style="display:none;">
+        <div class="card" style="max-width:520px;">
+          <div class="card-head"><span class="card-title">Create Your Shop</span></div>
+          <p style="color:var(--muted);font-size:.9rem;margin-bottom:1.25rem;">
+            You don't have a shop yet. Set one up to start selling.
+          </p>
+          <form onsubmit="registerShop(event)">
+            <div class="form-group">
+              <label class="form-label">Shop Name</label>
+              <input class="input" id="sNewName" type="text" placeholder="My Awesome Store" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Shop Address</label>
+              <textarea class="input" id="sNewAddr" rows="3" placeholder="Street, Building, City…" style="resize:vertical"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit" id="createShopBtn">Create Shop</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ── Shop page ── -->
+      <div id="hasShop" style="display:none;">
+
+        <!-- Compact shop header -->
+        <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.9rem 1.25rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+          <!-- Logo thumbnail -->
+          <div id="shopLogoWrap" style="flex-shrink:0;width:52px;height:52px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,var(--navy),var(--accent));display:flex;align-items:center;justify-content:center;">
+            <img id="shopBannerImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:contain;background:#fff;padding:4px;"/>
+            <span id="shopLogoFallback" style="color:rgba(255,255,255,.7);font-size:1.4rem;">🏪</span>
+          </div>
+          <!-- Name + address -->
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:1.05rem;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="shopName">—</div>
+            <div style="font-size:.8rem;color:var(--muted);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="shopAddress"></div>
+          </div>
+          <!-- Status + actions -->
+          <div style="display:flex;align-items:center;gap:.6rem;flex-shrink:0;">
+            <span id="shopStatus" class="badge">—</span>
+            <button class="btn btn-ghost btn-sm" onclick="openShopEditModal()">✏ Edit</button>
+            <button class="btn btn-sm" id="shopToggleBtn" onclick="toggleShop()">—</button>
+            <button class="btn btn-primary btn-sm" onclick="openAddProductModal()">+ Add Product</button>
+          </div>
+        </div>
+
+        <!-- Section label -->
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.85rem;">Product Inventory</div>
+
+        <!-- Products grid -->
+        <div id="shopProductsGrid"></div>
+        <div id="shopProductsEmpty" style="display:none;text-align:center;padding:3rem;color:var(--muted);">
+          No products in your shop yet.
+        </div>
+        <div id="pgShop" style="margin-top:1rem;"></div>
+      </div>
+
+    </section>
+
+    <!-- ══ PRODUCT MODELS ════════════════════════════ -->
+    <section id="secModels" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Product Models</h1>
+          <p class="page-sub" id="modelsSubtitle">Search the global catalog and add models to your shop</p>
+        </div>
+        <div style="display:flex;gap:.5rem;">
+          <button class="btn btn-ghost" id="btnMyModels" onclick="toggleMyModels()">My Models</button>
+          <button class="btn btn-primary" onclick="switchSection('requests')">+ New Request</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card" id="mfFiltersCard" style="margin-bottom:1.25rem;padding:1rem 1.25rem;">
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.75rem;">
+          <div class="form-group" style="margin:0;flex:1;min-width:150px;">
+            <label class="form-label">Brand</label>
+            <select class="input" id="mfBrand">
+              <option value="">All Brands</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;flex:1;min-width:150px;">
+            <label class="form-label">Category</label>
+            <select class="input" id="mfCategory" onchange="onMfCategoryChange()">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+          <div class="form-group" id="mfSubcatWrap" style="margin:0;flex:1;min-width:150px;display:none;">
+            <label class="form-label">Subcategory</label>
+            <select class="input" id="mfSubcat">
+              <option value="">All Subcategories</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+          <input class="input" id="modelSearchInput" type="text" placeholder="Search by description…"
+                 style="flex:1;min-width:200px;"
+                 onkeydown="if(event.key==='Enter')searchModels()"/>
+          <button class="btn btn-primary" onclick="searchModels()">Search</button>
+          <button class="btn btn-ghost"   onclick="clearModelSearch()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div id="modelsLoading" style="display:none;justify-content:center;padding:3rem;">
+        <div class="spinner"></div>
+      </div>
+
+      <!-- Empty -->
+      <div id="modelsEmpty" style="display:none;text-align:center;padding:3rem;color:var(--muted);">
+        No product models found.
+      </div>
+
+      <!-- Results grid -->
+      <div id="modelsGrid" style="display:flex;flex-wrap:wrap;gap:1rem;"></div>
+      <div id="pgModels" style="margin-top:1rem;"></div>
+
+    </section>
+
+    <!-- ══ MY ORDERS ════════════════════════════════ -->
+    <section id="secOrders" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">My Orders</h1>
+          <p class="page-sub">Sub-orders assigned to your shop</p>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="card" style="margin-bottom:1rem;padding:.85rem 1.25rem;display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;">
+        <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+          <label class="form-label">Status</label>
+          <select class="input" id="ofStatus">
+            <option value="">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="SHIPPING">Shipping</option>
+            <option value="DELIVERED">Delivered</option>
+            <option value="CANCELED">Canceled</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+          <label class="form-label">Order ID</label>
+          <input class="input" id="ofId" type="number" min="1" placeholder="e.g. 42"
+                 onkeydown="if(event.key==='Enter')searchOrders()"/>
+        </div>
+        <div style="display:flex;gap:.5rem;">
+          <button class="btn btn-primary" onclick="searchOrders()">Search</button>
+          <button class="btn btn-ghost"   onclick="clearOrderFilters()">Clear</button>
+        </div>
+      </div>
+
+      <div id="ordersLoading" style="display:flex;justify-content:center;padding:3rem;">
+        <div class="spinner"></div>
+      </div>
+      <div id="ordersEmpty" style="display:none;text-align:center;padding:3rem;color:var(--muted);">
+        No orders yet.
+      </div>
+      <div id="ordersList" style="display:flex;flex-direction:column;gap:1rem;"></div>
+      <div id="pgOrders" style="margin-top:1rem;"></div>
+    </section>
+
+    <!-- ══ PRODUCT REQUESTS ═════════════════════════ -->
+    <section id="secRequests" class="section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Product Requests</h1>
+          <p class="page-sub">Request new products to be added to the catalog</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Submit a Request</span></div>
+        <p style="color:var(--muted);font-size:.9rem;margin-bottom:1.25rem;">
+          If a product you want to sell isn't in the catalog yet, submit a request.
+          An admin will review it and add it to the catalog.
+        </p>
+        <form onsubmit="submitRequest(event)" id="reqForm">
+          <div class="form-group">
+            <label class="form-label">Product Name <span style="color:var(--err)">*</span></label>
+            <input class="input" id="rName" type="text" placeholder="e.g. iPhone 15 Pro" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="input" id="rDesc" rows="3" placeholder="Describe the product and why you want to sell it…" style="resize:vertical"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Product Image <span style="color:var(--err)">*</span></label>
+            <input type="file" accept="image/*" class="input" id="rImage" onchange="previewReqImage(this)" required/>
+            <img id="rImagePreview" src="" alt="" style="display:none;width:100%;max-height:180px;object-fit:contain;border-radius:var(--r);margin-top:.6rem;border:1px solid var(--border);background:var(--surface2);"/>
+          </div>
+          <div class="form-group" style="margin-bottom:1.25rem;">
+            <label class="form-label">Allow other sellers to sell this product?</label>
+            <div style="display:flex;gap:1rem;margin-top:.4rem;">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.9rem;">
+                <input type="radio" name="rGlobal" id="rGlobalYes" value="true" checked/> Yes — global product
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.9rem;">
+                <input type="radio" name="rGlobal" id="rGlobalNo" value="false"/> No — exclusive to me
+              </label>
+            </div>
+            <p style="font-size:.78rem;color:var(--muted);margin-top:.4rem;">
+              Global products appear in the shared catalog; exclusive products are only available in your shop.
+            </p>
+          </div>
+          <button class="btn btn-primary" type="submit" id="submitReqBtn">Submit Request</button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+</div><!-- /shell -->
+
+<!-- ══ Global overlays (outside sections so display:none on sections doesn't hide them) ══ -->
+
+<!-- Add Product -->
+<div class="overlay" id="addProductOverlay" onclick="closeAddProductModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:560px;">
+    <div class="modal-head">
+      <span class="modal-title">Add Product to Shop</span>
+      <button class="modal-close" onclick="closeAddProductModal()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:.85rem;">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Product Model <span style="color:var(--err)">*</span></label>
+        <select class="input" id="apModelSelect" onchange="onModelSelect(this)">
+          <option value="">— Loading models… —</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Product Name <span style="color:var(--err)">*</span></label>
+          <input class="input" id="apName" type="text" placeholder="Display name"/>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Price ($) <span style="color:var(--err)">*</span></label>
+          <input class="input" id="apPrice" type="number" min="0.01" step="0.01" placeholder="0.00"/>
+        </div>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Description</label>
+        <textarea class="input" id="apDesc" rows="2" style="resize:vertical" placeholder="Optional product description…"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Initial Stock <span style="color:var(--err)">*</span></label>
+          <input class="input" id="apStock" type="number" min="0" step="1" placeholder="0"/>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Status</label>
+          <select class="input" id="apStatus">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Product Image</label>
+        <input type="file" accept="image/*" class="input" id="apImageFile" onchange="previewApImage(this)"/>
+        <img id="apImagePreview" src="" alt="" style="display:none;width:100%;max-height:160px;object-fit:contain;border-radius:var(--r);margin-top:.5rem;border:1px solid var(--border);background:var(--surface2);"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeAddProductModal()">Cancel</button>
+      <button class="btn btn-primary" id="addProductBtn" onclick="saveNewProduct()">Add to Shop</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Stock -->
+<div class="overlay" id="editStockOverlay" onclick="closeEditStockModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:380px;">
+    <div class="modal-head">
+      <span class="modal-title">Edit Stock</span>
+      <button class="modal-close" onclick="closeEditStockModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--muted);font-size:.88rem;margin-bottom:1rem;">
+        Enter the quantity to <strong>add</strong> to the current stock.
+        Use a negative number to reduce stock.
+      </p>
+      <p style="font-size:.85rem;margin-bottom:.75rem;">
+        Current stock: <strong id="esCurrentStock">—</strong>
+      </p>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Quantity to add <span style="color:var(--err)">*</span></label>
+        <input class="input" id="esQty" type="number" step="1" placeholder="e.g. 10"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeEditStockModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveStockBtn" onclick="saveStockEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product view -->
+<div class="overlay" id="productViewOverlay" onclick="closeProductView()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:660px;padding:0;overflow:hidden;">
+    <div style="position:relative;background:var(--surface2);">
+      <img id="pvMainImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:contain;background:var(--surface2);display:none;"/>
+      <div id="pvImgPh" style="width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem;">No image</div>
+      <button onclick="closeProductView()" style="position:absolute;top:.75rem;right:.75rem;background:rgba(26,26,46,.55);border:none;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button id="pvImgToggleBtn" onclick="toggleProductViewImage()" style="display:none;position:absolute;bottom:.75rem;right:.75rem;background:rgba(26,26,46,.65);border:none;color:#fff;border-radius:var(--r-pill);padding:.35rem .9rem;font-size:.78rem;cursor:pointer;backdrop-filter:blur(4px);"></button>
+    </div>
+    <div style="padding:1.4rem 1.6rem;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.8rem;">
+        <div style="min-width:0;">
+          <h2 id="pvName" style="font-size:1.25rem;font-weight:700;color:var(--navy);line-height:1.3;margin-bottom:.4rem;"></h2>
+          <span id="pvCategory" class="badge badge-accent" style="font-size:.72rem;"></span>
+        </div>
+        <span id="pvStatusBadge" class="badge" style="flex-shrink:0;font-size:.72rem;margin-top:.2rem;"></span>
+      </div>
+      <p id="pvDesc" style="color:var(--muted);font-size:.88rem;line-height:1.65;margin-bottom:1.2rem;min-height:2rem;"></p>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:1rem;border-top:1px solid var(--border);">
+        <span id="pvPrice" style="font-size:1.5rem;font-weight:700;color:var(--accent);font-family:'Fraunces',serif;"></span>
+        <span id="pvStock" style="font-size:.85rem;color:var(--muted);"></span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeProductView()">Close</button>
+      <button class="btn btn-primary" onclick="openEditProductModal()">✏ Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product edit -->
+<div class="overlay" id="productEditOverlay" onclick="closeEditProductModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+    <div class="modal-head">
+      <span class="modal-title">Edit Product</span>
+      <button class="modal-close" onclick="closeEditProductModal()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:.85rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
+        <div class="form-group" style="margin:0;grid-column:1/-1;">
+          <label class="form-label">Product Name</label>
+          <input class="input" id="epName" type="text"/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Price ($)</label>
+          <input class="input" id="epPrice" type="number" min="0.01" step="0.01"/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Status</label>
+          <select class="input" id="epStatus">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Description</label>
+        <textarea class="input" id="epDesc" rows="3" style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Replace Product Image</label>
+        <input type="file" accept="image/*" class="input" id="epImageFile" onchange="previewEpImage(this)"/>
+        <img id="epImagePreview" src="" alt="" style="display:none;width:100%;max-height:140px;object-fit:contain;border-radius:var(--r);margin-top:.5rem;border:1px solid var(--border);background:var(--surface2);"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeEditProductModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveProductEditBtn" onclick="saveProductEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shop edit -->
+<div class="overlay" id="shopEditOverlay" onclick="closeShopEditModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title">Edit Shop</span>
+      <button class="modal-close" onclick="closeShopEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Shop Name</label>
+        <input class="input" id="sName" type="text" required/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Shop Address</label>
+        <textarea class="input" id="sAddr" rows="3" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeShopEditModal()">Cancel</button>
+      <button class="btn btn-primary" id="updateShopBtn" onclick="updateShop()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Model detail -->
+<div class="overlay" id="modelViewOverlay" onclick="closeModelView()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:580px;">
+    <div class="modal-head">
+      <span class="modal-title" id="mvTitle">Model Details</span>
+      <button class="modal-close" onclick="closeModelView()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <img id="mvImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:contain;background:var(--surface2);display:none;"/>
+      <div id="mvImgPh" style="width:100%;aspect-ratio:16/9;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem;">No image</div>
+      <div style="padding:1.25rem 1.5rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:.75rem;">
+          <h2 id="mvName" style="font-size:1.15rem;font-weight:700;color:var(--navy);line-height:1.3;"></h2>
+          <span id="mvStatus" class="badge" style="flex-shrink:0;font-size:.7rem;"></span>
+        </div>
+        <p id="mvDesc" style="color:var(--muted);font-size:.88rem;line-height:1.65;margin-bottom:1.25rem;"></p>
+        <button class="btn btn-primary" style="width:100%;" onclick="addModelToShop()">+ Add to My Shop</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="api.js"></script>
+<script>
+Auth.guard('ROLE_SELLER');
+
+/* ── Toast ──────────────────────────────────────────── */
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+/* ── Section switching ──────────────────────────────── */
+function switchSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  document.getElementById('sec' + id[0].toUpperCase() + id.slice(1)).classList.add('active');
+  document.querySelectorAll('.sidebar-link').forEach(l => {
+    if (l.textContent.toLowerCase().includes(id.toLowerCase())) l.classList.add('active');
+  });
+  if (id === 'shop')   loadShop();
+  if (id === 'orders') loadOrders();
+  if (id === 'models') {
+    loadModelFilters();
+    autoSelectModelsView();
+  }
+}
+
+/* ── Profile ────────────────────────────────────────── */
+let _vendorProfile = null;
+
+async function loadProfile() {
+  try {
+    const p = await API.vendorProfile();
+    _vendorProfile = p;
+    fillProfileView(p);
+  } catch(err) {
+    toast(err.message || 'Failed to load profile', 'error');
+  }
+}
+
+function fillProfileView(p) {
+  document.getElementById('navName').textContent = p.name ?? '';
+
+  // Avatar: image or letter fallback
+  const wrap   = document.getElementById('profileAvatarWrap');
+  const letter = (p.name ?? '?')[0].toUpperCase();
+  const src    = p.image_url ? imgSrc(p.image_url) : null;
+  if (src) {
+    wrap.innerHTML = `<img src="${src}" alt="${letter}"
+      style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"
+      onerror="this.outerHTML='<div class=\\'thumb-letter\\' style=\\'width:80px;height:80px;border-radius:50%;font-size:1.8rem;\\'>${letter}</div>'"/>`;
+  } else {
+    wrap.innerHTML = `<div class="thumb-letter"
+      style="width:80px;height:80px;border-radius:50%;font-size:1.8rem;">${letter}</div>`;
+  }
+
+  // Info fields
+  document.getElementById('viewName').textContent    = p.name    ?? '—';
+  document.getElementById('viewId').textContent      = p.id      ?? '—';
+  document.getElementById('viewAddress').textContent = p.address ?? '—';
+  document.getElementById('viewRating').textContent  = p.rating != null ? (+p.rating).toFixed(1) + ' ★' : '—';
+
+  // Status badge
+  const sb = document.getElementById('profileStatusBadge');
+  sb.textContent = p.status ?? '—';
+  sb.className   = 'badge ' + statusBadge(p.status);
+
+  // Approval notice — only show if not active
+  document.getElementById('approvalNotice').style.display = p.status === 'ACTIVE' ? 'none' : '';
+}
+
+function enterEditMode() {
+  const p = _vendorProfile ?? {};
+  document.getElementById('pName').value    = p.name    ?? '';
+  document.getElementById('pAddress').value = p.address ?? '';
+  document.getElementById('profileView').style.display  = 'none';
+  document.getElementById('profileEdit').style.display  = '';
+  document.getElementById('editProfileBtn').style.display = 'none';
+}
+
+function cancelEdit() {
+  document.getElementById('profileView').style.display  = '';
+  document.getElementById('profileEdit').style.display  = 'none';
+  document.getElementById('editProfileBtn').style.display = '';
+}
+
+function previewProfileImage(input) {
+  const file = input.files[0];
+  const prev = document.getElementById('pImagePreview');
+  if (file) { prev.src = URL.createObjectURL(file); prev.style.display = 'block'; }
+  else       { prev.style.display = 'none'; }
+}
+
+async function saveProfile(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveProfileBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const fd = new FormData();
+    fd.append('vendorName', document.getElementById('pName').value.trim());
+    fd.append('address',    document.getElementById('pAddress').value.trim());
+    const imgFile = document.getElementById('pImageFile').files[0];
+    if (imgFile) fd.append('imageFile', imgFile);
+    const p = await API.updateVendorProfile(fd);
+    _vendorProfile = p;
+    fillProfileView(p);
+    cancelEdit();
+    toast('Profile updated!', 'ok');
+  } catch(err) {
+    toast(err.message || 'Update failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  }
+}
+
+/* ── Shop ───────────────────────────────────────────── */
+let shopPage = 0;
+let _shopData = null;   // last ShopViewResponse
+
+async function loadShop(page = 0) {
+  shopPage = page;
+  document.getElementById('shopLoading').style.display = 'flex';
+  document.getElementById('noShop').style.display      = 'none';
+  document.getElementById('hasShop').style.display     = 'none';
+  try {
+    const data = await API.viewShop(page);
+    _shopData = data;
+    if (!data || !data.shopResponse?.id) {
+      document.getElementById('noShop').style.display = '';
+    } else {
+      fillShop(data);
+      document.getElementById('hasShop').style.display = '';
+    }
+  } catch(err) {
+    if (err.message?.includes('404') || err.message?.toLowerCase().includes('not found')) {
+      document.getElementById('noShop').style.display = '';
+    } else {
+      toast(err.message || 'Failed to load shop', 'error');
+    }
+  } finally {
+    document.getElementById('shopLoading').style.display = 'none';
+  }
+}
+
+function fillShop(data) {
+  const s      = data.shopResponse;
+  const active = s.active === true;
+  const src    = imgSrc(data.imageUrl);
+
+  // Logo thumbnail
+  const logoImg = document.getElementById('shopBannerImg');
+  const logoFb  = document.getElementById('shopLogoFallback');
+  if (src) {
+    logoImg.src           = src;
+    logoImg.style.display = 'block';
+    logoFb.style.display  = 'none';
+  } else {
+    logoImg.style.display = 'none';
+    logoFb.style.display  = '';
+  }
+
+  document.getElementById('shopName').textContent    = s.name    ?? '—';
+  document.getElementById('shopAddress').textContent = s.address ?? '';
+
+  const st = document.getElementById('shopStatus');
+  st.textContent = active ? 'ACTIVE' : 'INACTIVE';
+  st.className   = 'badge ' + (active ? 'badge-active' : 'badge-inactive');
+
+  const tb = document.getElementById('shopToggleBtn');
+  tb.textContent = active ? 'Deactivate' : 'Activate';
+  tb.className   = 'btn btn-sm ' + (active ? 'btn-danger' : 'btn-ok');
+
+  renderShopProducts(data.productResponses);
+}
+
+const _productMap = {};
+
+function renderShopProducts(page) {
+  const grid  = document.getElementById('shopProductsGrid');
+  const empty = document.getElementById('shopProductsEmpty');
+  const items = page?.content ?? [];
+
+  if (!items.length) {
+    grid.innerHTML      = '';
+    grid.style.display  = 'none';
+    empty.style.display = '';
+    document.getElementById('pgShop').innerHTML = '';
+    return;
+  }
+
+  grid.style.display  = '';
+  empty.style.display = 'none';
+
+  items.forEach(p => { _productMap[p.id] = p; });
+
+  grid.innerHTML = items.map(p => {
+    const src     = imgSrc(p.imageUrl);
+    const inStock = (p.stock ?? 0) > 0;
+    return `
+    <div class="product-card v-card" style="cursor:pointer;" onclick="viewProduct(${p.id})">
+      ${src
+        ? `<img class="v-card-img" src="${src}" alt="${esc(p.name)}" loading="lazy"
+               onerror="this.style.background='var(--surface2)';this.removeAttribute('src')"/>`
+        : `<div class="v-card-ph">No image</div>`}
+      <div class="v-card-body">
+        <div class="v-card-name">${esc(p.name ?? '—')}</div>
+        <div class="v-card-desc">${esc(p.description ?? '')}</div>
+        <div class="v-card-foot">
+          <span class="v-card-price">${p.price != null ? '$' + Number(p.price).toFixed(2) : '—'}</span>
+          <span class="v-card-stock">${inStock ? p.stock + ' in stock' : '<span style="color:var(--err)">Out</span>'}</span>
+        </div>
+        <div class="v-card-actions" onclick="event.stopPropagation()">
+          <span class="badge ${p.active===false?'badge-inactive':'badge-active'}" style="font-size:.68rem;">${p.active===false?'INACTIVE':'ACTIVE'}</span>
+          <div style="display:flex;gap:.3rem;">
+            <button class="btn btn-ghost btn-sm" onclick="openEditStockModal(${p.id})">Stock</button>
+            <button class="btn btn-sm ${p.active===false?'btn-ok':'btn-danger'}"
+                    onclick="toggleProductActive(${p.id},${p.active!==false})">
+              ${p.active===false?'Enable':'Disable'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Pagination
+  const pg = document.getElementById('pgShop');
+  if (!page || page.totalPages <= 1) { pg.innerHTML = ''; return; }
+  let html = '';
+  if (!page.first) html += `<button class="btn btn-ghost btn-sm" onclick="loadShop(${shopPage-1})">← Prev</button>`;
+  html += `<span style="font-size:.85rem;color:var(--muted);padding:0 .5rem;">Page ${page.number+1} of ${page.totalPages}</span>`;
+  if (!page.last)  html += `<button class="btn btn-ghost btn-sm" onclick="loadShop(${shopPage+1})">Next →</button>`;
+  pg.innerHTML = `<div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;">${html}</div>`;
+}
+
+function esc(str) { const d=document.createElement('div'); d.textContent=str??''; return d.innerHTML; }
+
+async function registerShop(e) {
+  e.preventDefault();
+  const btn = document.getElementById('createShopBtn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    await API.registerShop({
+      name   : document.getElementById('sNewName').value.trim(),
+      address: document.getElementById('sNewAddr').value.trim() || null,
+      active : true,
+    });
+    toast('Shop created!', 'ok');
+    loadShop();
+  } catch(err) {
+    toast(err.message || 'Failed to create shop', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Shop';
+  }
+}
+
+function openShopEditModal() {
+  const s = _shopData?.shopResponse ?? {};
+  document.getElementById('sName').value = s.name    ?? '';
+  document.getElementById('sAddr').value = s.address ?? '';
+  document.getElementById('shopEditOverlay').classList.add('show');
+}
+function closeShopEditModal() {
+  document.getElementById('shopEditOverlay').classList.remove('show');
+}
+
+async function updateShop() {
+  const btn = document.getElementById('updateShopBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await API.updateShop({
+      name   : document.getElementById('sName').value.trim(),
+      address: document.getElementById('sAddr').value.trim() || null,
+    });
+    toast('Shop updated!', 'ok');
+    closeShopEditModal();
+    loadShop(shopPage);
+  } catch(err) {
+    toast(err.message || 'Update failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+async function toggleShop() {
+  const btn    = document.getElementById('shopToggleBtn');
+  const active = _shopData?.shopResponse?.active === true;
+  btn.disabled = true;
+  try {
+    if (active) await API.deactivateShop();
+    else        await API.activateShop();
+    toast(active ? 'Shop deactivated' : 'Shop activated', active ? 'info' : 'ok');
+    loadShop(shopPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+/* ── Product Requests ───────────────────────────────── */
+function previewReqImage(input) {
+  const file = input.files[0];
+  const prev = document.getElementById('rImagePreview');
+  if (file) { prev.src = URL.createObjectURL(file); prev.style.display = 'block'; }
+  else       { prev.style.display = 'none'; }
+}
+
+async function submitRequest(e) {
+  e.preventDefault();
+  const file = document.getElementById('rImage').files[0];
+  if (!file) { toast('Product image is required', 'error'); return; }
+
+  const btn = document.getElementById('submitReqBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    const fd = new FormData();
+    fd.append('name',        document.getElementById('rName').value.trim());
+    fd.append('description', document.getElementById('rDesc').value.trim());
+    fd.append('imageFile',   file);
+    fd.append('isGlobal',    document.querySelector('input[name="rGlobal"]:checked').value);
+    await API.submitProductRequest(fd);
+    toast('Request submitted! An admin will review it.', 'ok');
+    document.getElementById('reqForm').reset();
+    document.getElementById('rImagePreview').style.display = 'none';
+  } catch(err) {
+    toast(err.message || 'Failed to submit request', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit Request';
+  }
+}
+
+/* ── Product Models ─────────────────────────────────── */
+let _modelsPage      = 0;
+const _modelViewMap  = {};
+let _mfFiltersLoaded = false;
+
+/* load brands + categories into the filter dropdowns (once) */
+async function loadModelFilters() {
+  if (_mfFiltersLoaded) return;
+  _mfFiltersLoaded = true;
+  try {
+    const [bRes, cRes] = await Promise.all([
+      API.getBrands(0, 200),
+      API.getCategories(0, 200),
+    ]);
+    const brands     = bRes?.content ?? [];
+    const categories = cRes?.content ?? [];
+
+    const bSel = document.getElementById('mfBrand');
+    brands.forEach(b => {
+      const o = document.createElement('option');
+      o.value = b.id; o.textContent = b.name;
+      bSel.appendChild(o);
+    });
+
+    const cSel = document.getElementById('mfCategory');
+    categories.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.name;
+      cSel.appendChild(o);
+    });
+  } catch(err) {
+    // dropdowns stay empty — search still works without filters
+  }
+}
+
+async function onMfCategoryChange() {
+  const catId  = document.getElementById('mfCategory').value;
+  const wrap   = document.getElementById('mfSubcatWrap');
+  const subSel = document.getElementById('mfSubcat');
+
+  subSel.innerHTML = '<option value="">All Subcategories</option>';
+
+  if (!catId) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  try {
+    const res    = await API.getCategorySubcats(Number(catId), 0, 200);
+    const subcats = res?.content ?? [];
+    subcats.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.name;
+      subSel.appendChild(o);
+    });
+  } catch(err) { /* subcats stay empty */ }
+}
+
+function searchModels() {
+  loadModels(0);
+}
+
+function clearModelSearch() {
+  document.getElementById('modelSearchInput').value = '';
+  document.getElementById('mfBrand').value           = '';
+  document.getElementById('mfCategory').value        = '';
+  document.getElementById('mfSubcat').innerHTML      = '<option value="">All Subcategories</option>';
+  document.getElementById('mfSubcatWrap').style.display = 'none';
+  document.getElementById('modelsGrid').innerHTML      = '';
+  document.getElementById('modelsEmpty').style.display = 'none';
+  document.getElementById('pgModels').innerHTML        = '';
+}
+
+let _showMyModels = false;
+
+function toggleMyModels() {
+  _showMyModels = !_showMyModels;
+  const btn      = document.getElementById('btnMyModels');
+  const filters  = document.getElementById('mfFiltersCard');
+  const subtitle = document.getElementById('modelsSubtitle');
+  if (_showMyModels) {
+    btn.textContent         = 'All Models';
+    btn.classList.replace('btn-ghost', 'btn-primary');
+    filters.style.display  = 'none';
+    subtitle.textContent   = 'Product models you have submitted or been assigned';
+  } else {
+    btn.textContent         = 'My Models';
+    btn.classList.replace('btn-primary', 'btn-ghost');
+    filters.style.display  = '';
+    subtitle.textContent   = 'Search the global catalog and add models to your shop';
+  }
+  loadModels(0);
+}
+
+async function autoSelectModelsView() {
+  let hasOwn = false;
+  try {
+    const check = await API.searchProductModels({ myModels: true }, 0, 1);
+    hasOwn = (check?.content?.length ?? 0) > 0;
+  } catch { /* fall through to global view */ }
+  if (hasOwn !== _showMyModels) toggleMyModels();
+  else loadModels(0);
+}
+
+async function loadModels(page = 0) {
+  _modelsPage = page;
+  document.getElementById('modelsLoading').style.display = 'flex';
+  document.getElementById('modelsGrid').innerHTML        = '';
+  document.getElementById('modelsEmpty').style.display   = 'none';
+  document.getElementById('pgModels').innerHTML          = '';
+  try {
+    let res;
+    if (_showMyModels) {
+      res = await API.searchProductModels({ myModels: true }, page, 12);
+    } else {
+      const desc    = document.getElementById('modelSearchInput').value.trim() || undefined;
+      const brandId = document.getElementById('mfBrand').value    || undefined;
+      const subcatId= document.getElementById('mfSubcat').value   || undefined;
+      const params  = { description: desc, brandId, subCategoryId: subcatId };
+      res           = await API.searchProductModels(params, page, 12);
+    }
+    const items = res?.content ?? [];
+    document.getElementById('modelsLoading').style.display = 'none';
+    if (!items.length) {
+      document.getElementById('modelsEmpty').style.display = '';
+      return;
+    }
+    items.forEach(m => { _modelViewMap[m.id] = m; });
+    renderModels(items);
+    renderModelsPagination(res);
+  } catch(err) {
+    document.getElementById('modelsLoading').style.display = 'none';
+    toast(err.message || 'Failed to load models', 'error');
+  }
+}
+
+function renderModels(items) {
+  const grid = document.getElementById('modelsGrid');
+  grid.innerHTML = items.map(m => {
+    const src = imgSrc(m.imageUrl);
+    const statusClass = m.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive';
+    return `
+    <div class="product-card v-card" style="cursor:pointer;" onclick="openModelView(${m.id})">
+      ${src
+        ? `<img class="v-card-img" src="${src}" alt="${esc(m.name)}" loading="lazy"
+               onerror="this.style.background='var(--surface2)';this.removeAttribute('src')"/>`
+        : `<div class="v-card-ph">No image</div>`}
+      <div class="v-card-body">
+        <div class="v-card-name">${esc(m.name ?? '—')}</div>
+        <div class="v-card-desc">${esc(m.description ?? '')}</div>
+        <div class="v-card-actions" style="margin-top:auto;padding-top:.4rem;border-top:1px solid var(--border);">
+          <span class="badge ${statusClass}" style="font-size:.68rem;">${esc(m.status ?? '')}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderModelsPagination(page) {
+  const pg = document.getElementById('pgModels');
+  if (!page || page.totalPages <= 1) { pg.innerHTML = ''; return; }
+  let html = '';
+  if (!page.first) html += `<button class="btn btn-ghost btn-sm" onclick="loadModels(${_modelsPage - 1})">← Prev</button>`;
+  html += `<span style="font-size:.85rem;color:var(--muted);padding:0 .5rem;">Page ${page.number + 1} of ${page.totalPages}</span>`;
+  if (!page.last)  html += `<button class="btn btn-ghost btn-sm" onclick="loadModels(${_modelsPage + 1})">Next →</button>`;
+  pg.innerHTML = `<div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;">${html}</div>`;
+}
+
+let _openModelId = null;
+
+function openModelView(id) {
+  const m = _modelViewMap[id];
+  if (!m) return;
+  _openModelId = id;
+
+  document.getElementById('mvTitle').textContent = m.name ?? 'Model Details';
+  document.getElementById('mvName').textContent  = m.name ?? '—';
+  document.getElementById('mvDesc').textContent  = m.description ?? '';
+
+  const sb = document.getElementById('mvStatus');
+  sb.textContent = m.status ?? '';
+  sb.className   = 'badge ' + (m.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive');
+
+  const src = imgSrc(m.imageUrl);
+  const img = document.getElementById('mvImg');
+  const ph  = document.getElementById('mvImgPh');
+  if (src) { img.src = src; img.style.display = 'block'; ph.style.display = 'none'; }
+  else      { img.style.display = 'none'; ph.style.display = 'flex'; }
+
+  document.getElementById('modelViewOverlay').classList.add('show');
+}
+
+function closeModelView() {
+  document.getElementById('modelViewOverlay').classList.remove('show');
+  _openModelId = null;
+}
+
+function addModelToShop() {
+  const modelId = _openModelId;          // save before closeModelView clears it
+  const model   = _modelViewMap[modelId];
+  closeModelView();
+
+  openAddProductModal().then(() => {
+    if (!modelId) return;
+    const sel = document.getElementById('apModelSelect');
+    // If the option isn't in the list (model wasn't in the first 100 results), inject it
+    if (!sel.querySelector(`option[value="${modelId}"]`) && model) {
+      const opt = document.createElement('option');
+      opt.value = modelId;
+      opt.textContent = model.name ?? `Model #${modelId}`;
+      sel.appendChild(opt);
+    }
+    sel.value = String(modelId);
+    onModelSelect(sel);
+  });
+}
+
+/* ── Toggle product active ──────────────────────────── */
+async function toggleProductActive(id, currentlyActive) {
+  const fd = new FormData();
+  fd.append('active', String(!currentlyActive));
+  try {
+    await API.vendorUpdateProduct(id, fd);
+    toast(currentlyActive ? 'Product disabled' : 'Product enabled', currentlyActive ? 'info' : 'ok');
+    loadShop(shopPage);
+  } catch(err) {
+    toast(err.message || 'Failed to update product', 'error');
+  }
+}
+
+/* ── Product view ───────────────────────────────────── */
+let _pvModelImg   = '';
+let _pvProductImg = '';
+let _pvShowModel  = true;
+let _pvCurrentId  = null;
+let _epProductId  = null;
+
+async function viewProduct(id) {
+  _pvCurrentId = id;
+  const overlay = document.getElementById('productViewOverlay');
+  overlay.classList.add('show');
+  // reset to placeholder while loading
+  document.getElementById('pvMainImg').style.display = 'none';
+  document.getElementById('pvImgPh').style.display   = 'flex';
+  document.getElementById('pvImgPh').textContent     = 'Loading…';
+  document.getElementById('pvName').textContent      = '';
+  document.getElementById('pvCategory').textContent  = '';
+  document.getElementById('pvDesc').textContent      = '';
+  document.getElementById('pvPrice').textContent     = '';
+  document.getElementById('pvStock').textContent     = '';
+  document.getElementById('pvImgToggleBtn').style.display = 'none';
+
+  try {
+    const p = await API.getProductById(id);
+
+    _pvModelImg   = p.ProductModelImageUrl ? imgSrc(p.ProductModelImageUrl) : '';
+    _pvProductImg = p.ProductImageUrl      ? imgSrc(p.ProductImageUrl)      : '';
+    _pvShowModel  = true;
+
+    document.getElementById('pvName').textContent     = p.name        ?? '—';
+    document.getElementById('pvCategory').textContent = p.Category    ?? '';
+    document.getElementById('pvDesc').textContent     = p.description ?? '';
+    document.getElementById('pvPrice').textContent    = p.price != null ? '$' + Number(p.price).toFixed(2) : '—';
+
+    const inStock = (p.stock ?? 0) > 0;
+    const stockEl = document.getElementById('pvStock');
+    stockEl.textContent  = inStock ? p.stock + ' in stock' : 'Out of stock';
+    stockEl.style.color  = inStock ? '' : 'var(--err)';
+
+    // status badge from _productMap (already loaded)
+    const cached = _productMap[id];
+    const sb = document.getElementById('pvStatusBadge');
+    if (cached) {
+      sb.textContent = cached.active === false ? 'INACTIVE' : 'ACTIVE';
+      sb.className   = 'badge ' + (cached.active === false ? 'badge-inactive' : 'badge-active');
+    } else { sb.textContent = ''; }
+
+    // show model image (primary)
+    _setPvImage(_pvModelImg);
+
+    // toggle button — only when vendor uploaded their own product image
+    if (_pvProductImg && _pvProductImg !== _pvModelImg) {
+      const btn = document.getElementById('pvImgToggleBtn');
+      btn.style.display = '';
+      btn.textContent   = 'View Product Image';
+    }
+  } catch(err) {
+    toast(err.message || 'Failed to load product', 'error');
+    overlay.classList.remove('show');
+  }
+}
+
+function _setPvImage(src) {
+  const img = document.getElementById('pvMainImg');
+  const ph  = document.getElementById('pvImgPh');
+  if (src) {
+    img.src            = src;
+    img.style.display  = 'block';
+    ph.style.display   = 'none';
+  } else {
+    img.style.display  = 'none';
+    ph.textContent     = 'No image';
+    ph.style.display   = 'flex';
+  }
+}
+
+function toggleProductViewImage() {
+  _pvShowModel = !_pvShowModel;
+  _setPvImage(_pvShowModel ? _pvModelImg : _pvProductImg);
+  document.getElementById('pvImgToggleBtn').textContent =
+    _pvShowModel ? 'View Product Image' : 'View Model Image';
+}
+
+function closeProductView() {
+  document.getElementById('productViewOverlay').classList.remove('show');
+  _pvCurrentId = null;
+}
+
+function openEditProductModal() {
+  const id = _pvCurrentId;
+  const p  = _productMap[id];
+  if (!p) return;
+  closeProductView();
+  document.getElementById('epName').value   = p.name        ?? '';
+  document.getElementById('epDesc').value   = p.description ?? '';
+  document.getElementById('epPrice').value  = p.price       ?? '';
+  document.getElementById('epStatus').value = String(p.active !== false);
+  document.getElementById('epImageFile').value = '';
+  document.getElementById('epImagePreview').style.display = 'none';
+  _epProductId = id;
+  document.getElementById('productEditOverlay').classList.add('show');
+}
+
+async function saveProductEdit() {
+  const name  = document.getElementById('epName').value.trim();
+  const price = document.getElementById('epPrice').value;
+  if (!name)  { toast('Product name is required', 'error'); return; }
+  if (!price) { toast('Price is required', 'error'); return; }
+  const btn = document.getElementById('saveProductEditBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const fd = new FormData();
+    fd.append('name',        name);
+    fd.append('description', document.getElementById('epDesc').value.trim());
+    fd.append('price',       price);
+    fd.append('active',      document.getElementById('epStatus').value);
+    const file = document.getElementById('epImageFile').files[0];
+    if (file) fd.append('imageFile', file);
+    await API.vendorUpdateProduct(_epProductId, fd);
+    toast('Product updated!', 'ok');
+    closeEditProductModal();
+    loadShop(shopPage);
+  } catch(err) {
+    toast(err.message || 'Failed to update product', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  }
+}
+
+function closeEditProductModal() {
+  document.getElementById('productEditOverlay').classList.remove('show');
+  _epProductId = null;
+}
+
+function previewEpImage(input) {
+  const file = input.files[0];
+  const prev = document.getElementById('epImagePreview');
+  if (file) { prev.src = URL.createObjectURL(file); prev.style.display = 'block'; }
+  else      { prev.style.display = 'none'; }
+}
+
+/* ── Add Product ────────────────────────────────────── */
+let _modelsCache = [];
+
+async function openAddProductModal() {
+  document.getElementById('apModelSelect').innerHTML = '<option value="">— Loading… —</option>';
+  document.getElementById('apName').value    = '';
+  document.getElementById('apDesc').value    = '';
+  document.getElementById('apPrice').value   = '';
+  document.getElementById('apStock').value   = '';
+  document.getElementById('apStatus').value  = 'true';
+  document.getElementById('apImageFile').value = '';
+  document.getElementById('apImagePreview').style.display = 'none';
+  document.getElementById('addProductOverlay').classList.add('show');
+
+  try {
+    const [globalRes, myRes] = await Promise.all([
+      API.searchProductModels({}, 0, 100),
+      API.searchProductModels({ myModels: true }, 0, 100),
+    ]);
+    const globalItems = globalRes?.content ?? [];
+    const myItems     = myRes?.content    ?? [];
+
+    // merge, deduplicate by id
+    const seen = new Set();
+    _modelsCache = [];
+    [...myItems, ...globalItems].forEach(m => {
+      if (!seen.has(m.id)) { seen.add(m.id); _modelsCache.push(m); }
+    });
+
+    const sel = document.getElementById('apModelSelect');
+    if (!_modelsCache.length) {
+      sel.innerHTML = '<option value="">— No product models available —</option>';
+      return;
+    }
+    sel.innerHTML =
+      '<option value="">— Select a product model —</option>' +
+      (myItems.length
+        ? `<optgroup label="My Models">${myItems.map(m =>
+            `<option value="${m.id}">${esc(m.name)}</option>`).join('')}</optgroup>`
+        : '') +
+      (globalItems.length
+        ? `<optgroup label="Global Models">${globalItems.map(m =>
+            `<option value="${m.id}">${esc(m.name)}</option>`).join('')}</optgroup>`
+        : '');
+  } catch(err) {
+    document.getElementById('apModelSelect').innerHTML =
+      '<option value="">— Failed to load models —</option>';
+    toast(err.message || 'Could not load product models', 'error');
+  }
+}
+
+function onModelSelect(sel) {
+  const id = Number(sel.value);
+  if (!id) return;
+  const model = _modelsCache.find(m => m.id === id);
+  if (model && !document.getElementById('apName').value.trim()) {
+    document.getElementById('apName').value = model.name ?? '';
+  }
+}
+
+function previewApImage(input) {
+  const file = input.files[0];
+  const prev = document.getElementById('apImagePreview');
+  if (file) {
+    prev.src = URL.createObjectURL(file);
+    prev.style.display = 'block';
+  } else {
+    prev.style.display = 'none';
+  }
+}
+
+function closeAddProductModal() {
+  document.getElementById('addProductOverlay').classList.remove('show');
+}
+
+async function saveNewProduct() {
+  const modelId = document.getElementById('apModelSelect').value;
+  const name    = document.getElementById('apName').value.trim();
+  const price   = document.getElementById('apPrice').value;
+  const stock   = document.getElementById('apStock').value;
+
+  if (!modelId) { toast('Please select a product model', 'error'); return; }
+  if (!name)    { toast('Product name is required', 'error'); return; }
+  if (!price)   { toast('Price is required', 'error'); return; }
+  if (stock === '') { toast('Stock quantity is required', 'error'); return; }
+
+  const btn = document.getElementById('addProductBtn');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const fd = new FormData();
+    fd.append('modelId',     modelId);
+    fd.append('name',        name);
+    fd.append('description', document.getElementById('apDesc').value.trim());
+    fd.append('price',       price);
+    fd.append('stock',       stock);
+    fd.append('status',      document.getElementById('apStatus').value);
+    const file = document.getElementById('apImageFile').files[0];
+    if (file) fd.append('imageFile', file);
+
+    await API.vendorAddProduct(fd);
+    toast('Product added to shop!', 'ok');
+    closeAddProductModal();
+    loadShop(shopPage);
+  } catch(err) {
+    toast(err.message || 'Failed to add product', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Add to Shop';
+  }
+}
+
+/* ── Edit Stock ─────────────────────────────────────── */
+let _editStockProductId = null;
+
+function openEditStockModal(productId) {
+  const p = _productMap[productId];
+  _editStockProductId = productId;
+  document.getElementById('esCurrentStock').textContent = p?.stock ?? '—';
+  document.getElementById('esQty').value = '';
+  document.getElementById('editStockOverlay').classList.add('show');
+}
+
+function closeEditStockModal() {
+  document.getElementById('editStockOverlay').classList.remove('show');
+  _editStockProductId = null;
+}
+
+async function saveStockEdit() {
+  const qty = document.getElementById('esQty').value;
+  if (qty === '' || isNaN(Number(qty))) { toast('Enter a valid quantity', 'error'); return; }
+
+  const btn = document.getElementById('saveStockBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await API.vendorEditStock(_editStockProductId, Number(qty));
+    toast('Stock updated!', 'ok');
+    closeEditStockModal();
+    loadShop(shopPage);
+  } catch(err) {
+    toast(err.message || 'Failed to update stock', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+/* ── Orders ─────────────────────────────────────────── */
+let _ordersPage = 0;
+
+async function loadOrders(page = 0) {
+  _ordersPage = page;
+  document.getElementById('ordersLoading').style.display = 'flex';
+  document.getElementById('ordersList').innerHTML        = '';
+  document.getElementById('ordersEmpty').style.display   = 'none';
+  document.getElementById('pgOrders').innerHTML          = '';
+  try {
+    const status     = document.getElementById('ofStatus').value || undefined;
+    const subOrderId = document.getElementById('ofId').value     || undefined;
+    const data  = await API.searchVendorOrders({ status, subOrderId }, page, 8);
+    const items = data?.content ?? [];
+    document.getElementById('ordersLoading').style.display = 'none';
+    if (!items.length) {
+      document.getElementById('ordersEmpty').style.display = '';
+      return;
+    }
+    renderOrders(items);
+    renderOrdersPagination(data);
+  } catch(err) {
+    document.getElementById('ordersLoading').style.display = 'none';
+    toast(err.message || 'Failed to load orders', 'error');
+  }
+}
+
+function searchOrders() { loadOrders(0); }
+
+function clearOrderFilters() {
+  document.getElementById('ofStatus').value = '';
+  document.getElementById('ofId').value     = '';
+  loadOrders(0);
+}
+
+function orderStatusBadge(s) {
+  const m = { PENDING:'badge-pending', SHIPPING:'badge-accent', DELIVERED:'badge-active', CANCELED:'badge-danger' };
+  return m[s] ?? '';
+}
+
+function nextStatusOptions(current) {
+  const map = {
+    PENDING  : [['SHIPPING','Mark as Shipping'], ['CANCELED','Cancel Order']],
+    SHIPPING : [['DELIVERED','Mark as Delivered'], ['CANCELED','Cancel Order']],
+  };
+  return map[current] ?? [];
+}
+
+function renderOrders(items) {
+  const list = document.getElementById('ordersList');
+  list.innerHTML = items.map(o => {
+    const options     = nextStatusOptions(o.status);
+    const badgeCls    = orderStatusBadge(o.status);
+    const orderedAt   = o.orderedAt   ? new Date(o.orderedAt).toLocaleString()   : '—';
+    const deliveredAt = o.deliveredAt ? new Date(o.deliveredAt).toLocaleString() : null;
+
+    const itemsHtml = (o.orderItems ?? []).map(item => {
+      const src = imgSrc(item.imageUrl);
+      return `
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--border);">
+          ${src
+            ? `<img src="${src}" alt="${esc(item.productName)}"
+                 style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0;"
+                 onerror="this.style.display='none'"/>`
+            : `<div style="width:44px;height:44px;border-radius:6px;background:var(--surface2);flex-shrink:0;"></div>`}
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:.88rem;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(item.productName)}</div>
+            <div style="font-size:.78rem;color:var(--muted);">× ${item.quantity} &nbsp;·&nbsp; $${Number(item.unitPrice).toFixed(2)} each</div>
+          </div>
+          <div style="font-size:.9rem;font-weight:700;color:var(--accent);flex-shrink:0;">$${Number(item.subtotal).toFixed(2)}</div>
+        </div>`;
+    }).join('');
+
+    const statusControls = options.length
+      ? `<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+           <select class="input" id="oStatus${o.id}" style="width:auto;font-size:.85rem;padding:.35rem .6rem;">
+             ${options.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}
+           </select>
+           <button class="btn btn-primary btn-sm" onclick="updateOrderStatus(${o.id})">Update</button>
+         </div>`
+      : `<span style="font-size:.82rem;color:var(--muted);">No further actions</span>`;
+
+    return `
+    <div class="card" id="orderCard${o.id}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+        <div>
+          <span style="font-size:1rem;font-weight:700;color:var(--navy);">Order #${o.id}</span>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem;">
+            Placed ${orderedAt}${deliveredAt ? ' &nbsp;·&nbsp; Delivered ' + deliveredAt : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-shrink:0;">
+          <span class="badge ${badgeCls}">${o.status}</span>
+          <span style="font-size:1rem;font-weight:700;color:var(--accent);">$${Number(o.price).toFixed(2)}</span>
+        </div>
+      </div>
+      <div style="padding:.1rem 1.25rem;">${itemsHtml}</div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;padding:.75rem 1.25rem;background:var(--surface2);border-radius:0 0 var(--radius) var(--radius);">
+        ${statusControls}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderOrdersPagination(page) {
+  const pg = document.getElementById('pgOrders');
+  if (!page || page.totalPages <= 1) { pg.innerHTML = ''; return; }
+  let html = '';
+  if (!page.first) html += `<button class="btn btn-ghost btn-sm" onclick="loadOrders(${_ordersPage - 1})">← Prev</button>`;
+  html += `<span style="font-size:.85rem;color:var(--muted);padding:0 .5rem;">Page ${page.number + 1} of ${page.totalPages}</span>`;
+  if (!page.last)  html += `<button class="btn btn-ghost btn-sm" onclick="loadOrders(${_ordersPage + 1})">Next →</button>`;
+  pg.innerHTML = `<div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;">${html}</div>`;
+}
+
+async function updateOrderStatus(orderId) {
+  const sel = document.getElementById(`oStatus${orderId}`);
+  if (!sel) return;
+  const newStatus = sel.value;
+  try {
+    await API.updateSubOrderStatus(orderId, newStatus);
+    toast(`Order #${orderId} updated to ${newStatus}`, 'ok');
+    loadOrders(_ordersPage);
+  } catch(err) {
+    toast(err.message || 'Failed to update order status', 'error');
+  }
+}
+
+/* ── Helpers ────────────────────────────────────────── */
+function statusBadge(s) {
+  const m = { ACTIVE:'badge-active', INACTIVE:'badge-inactive', SUSPENDED:'badge-danger',
+              VENDOR_APPROVAL_PENDING:'badge-pending', PENDING:'badge-pending',
+              APPROVED:'badge-active', REJECTED:'badge-danger', DISABLED:'badge-inactive' };
+  return m[s] ?? '';
+}
+
+function doLogout() { Auth.clear(); window.location.href = 'index.html'; }
+
+/* ── Notification bell ──────────────────────────────── */
+let _notifCount = 0;
+
+function pushNotification(subOrderId) {
+  _notifCount++;
+
+  // ring animation
+  const btn = document.getElementById('notifBtn');
+  btn.classList.remove('bell-ring');
+  void btn.offsetWidth; // reflow to restart animation
+  btn.classList.add('bell-ring');
+
+  // badge
+  const badge = document.getElementById('notifBadge');
+  badge.textContent = _notifCount > 99 ? '99+' : _notifCount;
+  badge.classList.add('show');
+
+  // add item to dropdown list
+  document.getElementById('notifEmpty').style.display = 'none';
+  const list = document.getElementById('notifList');
+  const item = document.createElement('div');
+  item.className = 'notif-item';
+  item.style.cursor = 'pointer';
+  item.innerHTML = `<span class="notif-item-title">New order id=${subOrderId}</span>
+                    <span class="notif-item-time">${new Date().toLocaleTimeString()}</span>`;
+  item.onclick = () => {
+    document.getElementById('notifPanel').classList.remove('show');
+    switchSection('orders');
+  };
+  list.insertBefore(item, list.firstChild);
+}
+
+function toggleNotifPanel() {
+  document.getElementById('notifPanel').classList.toggle('show');
+}
+
+function clearNotifs() {
+  _notifCount = 0;
+  document.getElementById('notifBadge').classList.remove('show');
+  document.getElementById('notifList').innerHTML =
+    '<div id="notifEmpty" style="text-align:center;padding:1.5rem;font-size:.83rem;color:var(--muted);">No new orders</div>';
+  document.getElementById('notifPanel').classList.remove('show');
+}
+
+// close panel when clicking outside
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('notifWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('notifPanel').classList.remove('show');
+  }
+});
+
+/* ── SSE Notifications ──────────────────────────────── */
+async function initNotifications() {
+  try {
+    const res = await fetch(`${BASE}/api/notifications/ticket`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${Auth.get()}` }
+    });
+    if (!res.ok) throw new Error('ticket failed');
+    const raw    = await res.text();
+    const ticket = raw.replace(/"/g, ''); // strip JSON quotes if Spring wraps the string
+
+    const es = new EventSource(`${BASE}/api/notifications/stream?token=${ticket}`);
+
+    es.addEventListener('new-order', e => {
+      const subOrderId = e.data.replace('SubOrder #', '').trim();
+      pushNotification(subOrderId);
+      toast('New order id=' + subOrderId, 'ok');
+      if (document.getElementById('secOrders').classList.contains('active')) {
+        loadOrders(_ordersPage);
+      }
+    });
+
+    es.onerror = () => {
+      es.close();
+      setTimeout(initNotifications, 5000);
+    };
+  } catch {
+    setTimeout(initNotifications, 10000);
+  }
+}
+
+/* ── Init ───────────────────────────────────────────── */
+loadProfile();
+initNotifications();
+</script>
+</body>
+</html>

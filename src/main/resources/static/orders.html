@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>KeeConnect – My Orders</title>
+  <link rel="stylesheet" href="app.css"/>
+  <style>
+    .page-wrap { max-width:940px; margin:0 auto; padding:1.5rem; }
+    .page-title { font-size:1.4rem; font-weight:800; color:var(--navy); margin-bottom:1.5rem; }
+
+    /* Order card */
+    .order-card {
+      background:#fff; border-radius:var(--radius-lg);
+      box-shadow:var(--shadow-sm); margin-bottom:1rem; overflow:hidden;
+    }
+    .order-card-head {
+      display:flex; align-items:center; gap:.85rem;
+      padding:1rem 1.25rem; flex-wrap:wrap;
+    }
+    .order-card-id { font-weight:800; color:var(--navy); font-size:.95rem; white-space:nowrap; }
+    .order-card-details {
+      flex:1; display:flex; flex-wrap:wrap; gap:.25rem 1.25rem;
+      font-size:.82rem; color:var(--muted); min-width:0;
+    }
+    .order-card-price { font-weight:700; color:var(--accent); white-space:nowrap; font-size:.95rem; }
+
+    /* Status badges */
+    .order-status-badge {
+      font-size:.7rem; font-weight:700; padding:.2rem .6rem;
+      border-radius:99px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;
+    }
+    .badge-pending    { background:#fff3cd; color:#856404; }
+    .badge-processing { background:#cff4fc; color:#055160; }
+    .badge-shipped    { background:#d1ecf1; color:#0c5460; }
+    .badge-delivered  { background:#d4edda; color:#155724; }
+    .badge-cancelled  { background:#f8d7da; color:#721c24; }
+    .badge-default    { background:var(--surface-alt); color:var(--muted); }
+
+    /* Inline invoice panel */
+    .invoice-panel {
+      border-top:1px solid var(--border);
+      background:var(--surface-alt);
+      padding:1.25rem; display:none;
+    }
+    .invoice-panel.open { display:block; }
+    .invoice-panel-head {
+      margin-bottom:.85rem; padding-bottom:.75rem; border-bottom:2px solid var(--navy);
+    }
+    .invoice-panel-head h4 { margin:0; color:var(--navy); font-size:.95rem; }
+    .invoice-panel-head p  { margin:.2rem 0 0; font-size:.78rem; color:var(--muted); }
+
+    .inv-table-wrap { overflow-x:auto; }
+    .inv-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+    .inv-table th {
+      padding:.45rem .7rem; font-size:.72rem; text-transform:uppercase;
+      letter-spacing:.04em; color:var(--muted); text-align:left;
+      border-bottom:1px solid var(--border);
+    }
+    .inv-table td { padding:.55rem .7rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .inv-table tbody tr:last-child td { border-bottom:none; }
+    .inv-item-img { width:48px; height:48px; object-fit:cover; border-radius:6px; display:block; }
+    .inv-total-row td {
+      border-top:2px solid var(--navy) !important; border-bottom:none;
+      font-weight:700; font-size:.95rem; padding-top:.7rem;
+    }
+
+    .orders-empty { text-align:center; padding:4rem 1rem; color:var(--muted); }
+    .orders-pagination { display:flex; justify-content:center; flex-wrap:wrap; gap:.5rem; margin-top:1.5rem; }
+  </style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-brand">Kee<span>Connect</span></div>
+  <div class="topnav-actions">
+    <a href="shop.html" class="btn btn-ghost">← Back to Shop</a>
+    <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
+  </div>
+</nav>
+
+<main class="page-wrap">
+  <h2 class="page-title">My Orders</h2>
+  <div id="ordersList">
+    <div style="text-align:center;padding:4rem"><div class="spinner"></div></div>
+  </div>
+  <div class="orders-pagination" id="ordersPagination"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+<script src="api.js"></script>
+<script>
+Auth.guard('ROLE_CUSTOMER');
+
+let _page = 0;
+const _invCache = {};
+
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadOrders(page = 0) {
+  _page = page;
+  document.getElementById('ordersList').innerHTML =
+    '<div style="text-align:center;padding:4rem"><div class="spinner"></div></div>';
+  document.getElementById('ordersPagination').innerHTML = '';
+  try {
+    const data = await API.getOrders(page, 8);
+    renderOrders(data);
+  } catch(err) {
+    document.getElementById('ordersList').innerHTML =
+      `<div class="orders-empty"><p style="color:var(--err)">${esc(err.message)}</p></div>`;
+  }
+}
+
+function renderOrders(data) {
+  const items = data.content ?? [];
+  const list  = document.getElementById('ordersList');
+  if (!items.length) {
+    list.innerHTML = `
+      <div class="orders-empty">
+        <p>You have no orders yet.</p>
+        <a href="shop.html" class="btn btn-primary" style="margin-top:1rem">Start Shopping</a>
+      </div>`;
+    return;
+  }
+  list.innerHTML = items.map(o => `
+    <div class="order-card" id="card-${o.id}">
+      <div class="order-card-head">
+        <span class="order-card-id">Order #${o.id}</span>
+        <span class="order-status-badge ${statusBadgeClass(o.status)}">${esc(o.status ?? '—')}</span>
+        <div class="order-card-details">
+          <span>📅 ${new Date(o.orderedAt).toLocaleDateString()}</span>
+          <span>📍 ${esc(o.shippingAddress ?? '—')}</span>
+          ${o.deliveredAt ? `<span>✓ Delivered ${new Date(o.deliveredAt).toLocaleDateString()}</span>` : ''}
+        </div>
+        <span class="order-card-price">$${(+o.price).toFixed(2)}</span>
+        <button class="btn btn-ghost" id="invBtn-${o.id}"
+                onclick="toggleInvoice(${o.id})"
+                style="padding:.4rem .9rem;font-size:.82rem;white-space:nowrap">
+          View Invoice
+        </button>
+      </div>
+      <div class="invoice-panel" id="inv-${o.id}"></div>
+    </div>`).join('');
+
+  renderPagination(data);
+}
+
+async function toggleInvoice(orderId) {
+  const panel = document.getElementById(`inv-${orderId}`);
+  const btn   = document.getElementById(`invBtn-${orderId}`);
+
+  if (panel.classList.contains('open')) {
+    panel.classList.remove('open');
+    btn.textContent = 'View Invoice';
+    return;
+  }
+
+  panel.classList.add('open');
+  btn.textContent = 'Hide Invoice';
+
+  if (_invCache[orderId]) {
+    renderInvoicePanel(orderId, _invCache[orderId]);
+    return;
+  }
+
+  panel.innerHTML = '<div style="text-align:center;padding:1.5rem"><div class="spinner"></div></div>';
+  try {
+    const inv = await API.getInvoice(orderId);
+    _invCache[orderId] = inv;
+    renderInvoicePanel(orderId, inv);
+  } catch(err) {
+    panel.innerHTML = `<p style="color:var(--err);text-align:center;padding:1rem">${esc(err.message)}</p>`;
+  }
+}
+
+function renderInvoicePanel(orderId, inv) {
+  const items = inv.orderItems ?? [];
+  document.getElementById(`inv-${orderId}`).innerHTML = `
+    <div class="invoice-panel-head">
+      <h4>Invoice — Order #${inv.orderId}</h4>
+      <p>Generated: ${new Date(inv.generatedAt ?? Date.now()).toLocaleString()}</p>
+    </div>
+    <div class="inv-table-wrap">
+      <table class="inv-table">
+        <thead><tr>
+          <th colspan="2">Product</th>
+          <th style="text-align:center">Qty</th>
+          <th style="text-align:right">Unit Price</th>
+          <th style="text-align:right">Subtotal</th>
+        </tr></thead>
+        <tbody>
+          ${items.map(i => `
+          <tr>
+            <td style="width:56px">
+              <img class="inv-item-img" src="${imgSrc(i.imageUrl)}" alt=""
+                   onerror="this.style.display='none'"/>
+            </td>
+            <td>${esc(i.productName)}</td>
+            <td style="text-align:center">${i.quantity}</td>
+            <td style="text-align:right">$${(+i.unitPrice).toFixed(2)}</td>
+            <td style="text-align:right">$${(+i.subtotal).toFixed(2)}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr class="inv-total-row">
+            <td colspan="4" style="text-align:right;padding-right:1rem">Total</td>
+            <td style="text-align:right;color:var(--accent)">$${(+inv.totalPrice).toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
+}
+
+function renderPagination(data) {
+  const pg    = document.getElementById('ordersPagination');
+  const total = data.totalPages ?? 1;
+  if (total <= 1) { pg.innerHTML = ''; return; }
+  let html = '';
+  if (_page > 0)
+    html += `<button class="page-btn" onclick="loadOrders(${_page - 1})">‹ Prev</button>`;
+  for (let i = 0; i < total; i++)
+    html += `<button class="page-btn${i === _page ? ' active' : ''}" onclick="loadOrders(${i})">${i + 1}</button>`;
+  if (_page < total - 1)
+    html += `<button class="page-btn" onclick="loadOrders(${_page + 1})">Next ›</button>`;
+  pg.innerHTML = html;
+}
+
+function statusBadgeClass(status) {
+  const map = {
+    PENDING: 'badge-pending', PROCESSING: 'badge-processing',
+    SHIPPED: 'badge-shipped', DELIVERED: 'badge-delivered', CANCELLED: 'badge-cancelled',
+  };
+  return map[(status ?? '').toUpperCase()] ?? 'badge-default';
+}
+
+function doLogout() { Auth.clear(); window.location.href = 'index.html'; }
+
+loadOrders(0);
+</script>
+</body>
+</html>

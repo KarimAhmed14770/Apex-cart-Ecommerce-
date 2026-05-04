@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>KeeConnect – Shop</title>
+  <link rel="stylesheet" href="app.css"/>
+  <style>
+    .topnav-search {
+      flex:1; max-width:480px; margin:0 1.5rem;
+      display:flex; gap:.5rem;
+    }
+    .topnav-search .input { margin:0; flex:1; height:36px; padding:0 .75rem; font-size:.9rem; }
+    .cart-badge {
+      position:relative; cursor:pointer;
+      background:none; border:none; padding:.25rem .5rem; font-size:1.2rem;
+    }
+    .cart-badge sup {
+      position:absolute; top:0; right:0;
+      background:var(--accent); color:#fff;
+      border-radius:99px; font-size:.65rem; padding:0 .35rem; line-height:1.4;
+      font-weight:700; min-width:16px; text-align:center;
+    }
+
+    /* Product grid */
+    .product-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap:1.25rem; padding:1.25rem 0;
+    }
+    .product-card {
+      background:#fff; border-radius:var(--radius-lg); overflow:hidden;
+      box-shadow:var(--shadow-sm); transition:var(--tr);
+      display:flex; flex-direction:column;
+    }
+    .product-card:hover { box-shadow:var(--shadow); transform:translateY(-2px); }
+    .product-card img {
+      width:100%; aspect-ratio:4/3; object-fit:cover;
+      background:var(--surface-alt);
+    }
+    .product-card .pc-body { padding:1rem; flex:1; display:flex; flex-direction:column; }
+    .product-card .pc-name { font-weight:600; font-size:.95rem; color:var(--navy); margin-bottom:.25rem; }
+    .product-card .pc-meta { font-size:.78rem; color:var(--muted); margin-bottom:.5rem; }
+    .product-card .pc-price {
+      font-size:1.15rem; font-weight:700; color:var(--accent);
+      margin-top:auto; padding-top:.5rem;
+    }
+    .product-card .pc-stock { font-size:.75rem; color:var(--muted); }
+
+    /* Product detail overlay */
+    .pd-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.5);
+      display:flex; align-items:center; justify-content:center;
+      z-index:400; opacity:0; pointer-events:none; transition:opacity .2s;
+      padding:1rem;
+    }
+    .pd-overlay.show { opacity:1; pointer-events:all; }
+    .pd-modal {
+      background:#fff; border-radius:12px;
+      width:100%; max-width:680px; max-height:90vh;
+      overflow-y:auto; position:relative;
+    }
+    .pd-close {
+      position:absolute; top:.75rem; right:.75rem;
+      background:rgba(0,0,0,.35); border:none; border-radius:50%;
+      width:30px; height:30px; font-size:.9rem; cursor:pointer;
+      color:#fff; display:flex; align-items:center; justify-content:center; z-index:1;
+    }
+    .pd-main-img {
+      width:100%; aspect-ratio:16/9; object-fit:contain;
+      background:#f1f3f5; display:block; border-radius:12px 12px 0 0;
+    }
+    .pd-body { padding:1.25rem; }
+    .pd-name  { font-size:1.2rem; font-weight:700; color:var(--navy); margin-bottom:.25rem; }
+    .pd-cat   { font-size:.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:.75rem; }
+    .pd-desc  { font-size:.88rem; color:var(--text); line-height:1.65; margin-bottom:1rem; }
+    .pd-price { font-size:1.5rem; font-weight:800; color:var(--accent); margin-bottom:.35rem; }
+    .pd-stock-ok  { font-size:.85rem; color:#2a9d58; font-weight:500; }
+    .pd-stock-out { font-size:.85rem; color:var(--err); font-weight:500; }
+    .pd-qty-row { display:flex; align-items:center; gap:.75rem; margin:1rem 0; }
+    .pd-qty-row label { font-size:.85rem; font-weight:600; }
+    .pd-qty-input {
+      width:68px; height:34px; text-align:center;
+      border:1px solid var(--border); border-radius:6px; font-size:.95rem; font-weight:600;
+    }
+    .pd-imgs { display:flex; gap:.5rem; padding:.75rem 1.25rem 0; }
+    .pd-thumb {
+      width:60px; height:60px; object-fit:cover; border-radius:6px;
+      border:2px solid transparent; cursor:pointer; flex-shrink:0;
+    }
+    .pd-thumb.active { border-color:var(--accent); }
+
+    /* Filters sidebar */
+    .shop-layout { display:flex; gap:1.5rem; align-items:flex-start; }
+    .filter-aside {
+      width:220px; flex-shrink:0; background:#fff;
+      border-radius:var(--radius-lg); padding:1.25rem;
+      box-shadow:var(--shadow-sm); position:sticky; top:1rem;
+    }
+    .filter-aside h4 { margin:0 0 1rem; font-size:.9rem; color:var(--navy); text-transform:uppercase; letter-spacing:.05em; }
+    .filter-section { margin-bottom:1.25rem; }
+    .filter-section label { display:block; font-size:.82rem; color:var(--muted); margin-bottom:.35rem; font-weight:500; }
+    .shop-content { flex:1; min-width:0; }
+
+    /* Drawer cart */
+    .drawer-item-qty {
+      display:flex; align-items:center; gap:.5rem;
+    }
+    .qty-btn {
+      width:28px; height:28px; border-radius:50%; border:1px solid var(--border);
+      background:#fff; cursor:pointer; font-size:1rem; display:flex;
+      align-items:center; justify-content:center; transition:var(--tr);
+    }
+    .qty-btn:hover { background:var(--surface-alt); }
+
+    /* Invoice modal */
+    .invoice-row { display:flex; justify-content:space-between; padding:.4rem 0; border-bottom:1px solid var(--border); font-size:.9rem; }
+    .invoice-row:last-child { border:none; font-weight:700; font-size:1rem; }
+    .invoice-header { margin-bottom:1rem; padding-bottom:1rem; border-bottom:2px solid var(--navy); }
+    .invoice-header h3 { margin:0; color:var(--navy); }
+    .invoice-header p { margin:.25rem 0 0; font-size:.82rem; color:var(--muted); }
+
+    /* Invoice table */
+    .inv-table { width:100%; border-collapse:collapse; font-size:.88rem; }
+    .inv-table th { background:var(--surface-alt); padding:.5rem .75rem; font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+    .inv-table td { padding:.6rem .75rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .inv-item-img { width:52px; height:52px; object-fit:cover; border-radius:6px; display:block; }
+    .inv-total-row td { border-top:2px solid var(--navy); border-bottom:none; font-weight:700; font-size:1rem; padding-top:.75rem; }
+
+    @media(max-width:768px){
+      .filter-aside { display:none; }
+      .shop-layout { display:block; }
+    }
+
+    /* Browse tabs */
+    .browse-bar {
+      background:#fff; border-bottom:1px solid var(--border);
+      display:flex; gap:.25rem; padding:.5rem 1.5rem;
+      overflow-x:auto;
+    }
+    .browse-tab {
+      padding:.4rem 1.1rem; border:none; border-radius:var(--radius);
+      background:none; cursor:pointer; font-size:.88rem; font-weight:500; color:var(--muted);
+      transition:var(--tr); white-space:nowrap; flex-shrink:0;
+    }
+    .browse-tab:hover { background:var(--surface-alt); color:var(--navy); }
+    .browse-tab.active { background:var(--surface-alt); color:var(--navy); font-weight:700; }
+
+    /* Browse card grid */
+    .browse-view { padding:1.25rem 1.5rem; max-width:1400px; margin:0 auto; }
+    .browse-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+      gap:1.25rem; padding:1.25rem 0;
+    }
+    .browse-card {
+      background:#fff; border-radius:var(--radius-lg);
+      box-shadow:var(--shadow-sm); padding:1.25rem 1rem;
+      display:flex; flex-direction:column; align-items:center;
+      gap:.6rem; cursor:pointer; transition:var(--tr); text-align:center;
+    }
+    .browse-card:hover { box-shadow:var(--shadow); transform:translateY(-2px); }
+    .browse-card img { width:72px; height:72px; object-fit:contain; border-radius:8px; background:var(--surface-alt); }
+    .browse-card .bc-name { font-size:.85rem; font-weight:600; color:var(--navy); }
+    .browse-breadcrumb {
+      display:flex; align-items:center; gap:.35rem;
+      font-size:.82rem; color:var(--muted); margin-bottom:.75rem;
+    }
+    .browse-breadcrumb button {
+      background:none; border:none; color:var(--accent); cursor:pointer;
+      font-size:.82rem; font-weight:500; padding:0;
+    }
+    .browse-breadcrumb button:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Nav ──────────────────────────────────────── -->
+<nav class="topnav">
+  <div class="topnav-brand">Kee<span>Connect</span></div>
+  <div class="topnav-search">
+    <input class="input" id="searchInput" type="text" placeholder="Search products, brands…"
+           onkeydown="if(event.key==='Enter')doSearch()"/>
+    <button class="btn btn-primary" style="height:36px;padding:0 1rem;white-space:nowrap" onclick="doSearch()">Search</button>
+  </div>
+  <div class="topnav-actions">
+    <button class="cart-badge" onclick="openCart()" title="Cart">
+      🛒<sup id="cartCount">0</sup>
+    </button>
+    <a href="orders.html" class="btn btn-ghost">My Orders</a>
+    <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ── Browse Tabs ──────────────────────────────────── -->
+<div class="browse-bar">
+  <button class="browse-tab active" id="tabProducts"   onclick="switchView('products')">All Products</button>
+  <button class="browse-tab"        id="tabBrands"     onclick="switchView('brands')">Brands</button>
+  <button class="browse-tab"        id="tabCategories" onclick="switchView('categories')">Categories</button>
+</div>
+
+<!-- ── Main ─────────────────────────────────────────── -->
+<main style="padding:1.25rem 1.5rem; max-width:1400px; margin:0 auto;">
+  <div class="shop-layout">
+
+    <!-- Filters -->
+    <aside class="filter-aside">
+      <h4>Filters</h4>
+      <div class="filter-section">
+        <label>Brand</label>
+        <select class="input" id="fBrand" style="margin:0">
+          <option value="">All Brands</option>
+        </select>
+      </div>
+      <div class="filter-section">
+        <label>Category</label>
+        <select class="input" id="fCategory" style="margin:0" onchange="loadSubcategories()">
+          <option value="">All Categories</option>
+        </select>
+      </div>
+      <div class="filter-section">
+        <label>Subcategory</label>
+        <select class="input" id="fSubcat" style="margin:0">
+          <option value="">All</option>
+        </select>
+      </div>
+      <div class="filter-section">
+        <label>Min Price ($)</label>
+        <input class="input" id="fMin" type="number" min="0" placeholder="0" style="margin:0"/>
+      </div>
+      <div class="filter-section">
+        <label>Max Price ($)</label>
+        <input class="input" id="fMax" type="number" min="0" placeholder="Any" style="margin:0"/>
+      </div>
+      <button class="btn btn-ghost w-full" onclick="doSearch()" style="margin-top:.5rem">Apply</button>
+      <button class="btn" style="width:100%;margin-top:.5rem;background:var(--surface-alt);color:var(--muted)"
+              onclick="clearFilters()">Clear</button>
+    </aside>
+
+    <!-- Product area -->
+    <div class="shop-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+        <h2 style="margin:0;font-size:1.2rem;color:var(--navy);" id="searchHeading">All Products</h2>
+        <span id="resultCount" style="font-size:.82rem;color:var(--muted)"></span>
+      </div>
+
+      <div id="productGrid" class="product-grid">
+        <div class="spinner" style="grid-column:1/-1;margin:3rem auto;"></div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+  </div>
+</main>
+
+<!-- ── Brands Browse View ──────────────────────────── -->
+<div id="brandsView" class="browse-view" style="display:none">
+  <h2 style="margin:0 0 .25rem;font-size:1.2rem;color:var(--navy)">Shop by Brand</h2>
+  <p style="margin:0;font-size:.82rem;color:var(--muted)">Click a brand to browse its products</p>
+  <div id="brandsGrid" class="browse-grid"></div>
+</div>
+
+<!-- ── Categories Browse View ──────────────────────── -->
+<div id="categoriesView" class="browse-view" style="display:none">
+  <div class="browse-breadcrumb" id="catBreadcrumb" style="display:none"></div>
+  <h2 style="margin:0 0 .25rem;font-size:1.2rem;color:var(--navy)" id="catHeading">Shop by Category</h2>
+  <p style="margin:0;font-size:.82rem;color:var(--muted)" id="catSubheading">Click a category to explore</p>
+  <div id="catGrid" class="browse-grid"></div>
+</div>
+
+<!-- ── Cart Drawer ───────────────────────────────────── -->
+<div class="drawer-overlay" id="cartOverlay" onclick="closeCart()"></div>
+<aside class="drawer" id="cartDrawer">
+  <div class="drawer-head">
+    <span class="drawer-title">Your Cart</span>
+    <button class="drawer-close" onclick="closeCart()">✕</button>
+  </div>
+  <div class="drawer-body" id="cartBody">
+    <p style="color:var(--muted);text-align:center;padding:2rem 0">Your cart is empty</p>
+  </div>
+  <div class="drawer-foot">
+    <div style="display:flex;justify-content:space-between;margin-bottom:1rem;font-weight:700;font-size:1.1rem;">
+      <span>Total</span><span id="cartTotal">$0.00</span>
+    </div>
+    <button class="btn btn-primary w-full" onclick="openCheckout()" id="checkoutBtn">Proceed to Checkout</button>
+  </div>
+</aside>
+
+<!-- ── Checkout Modal ────────────────────────────────── -->
+<div class="overlay" id="checkoutOverlay" onclick="closeCheckout()">
+  <div class="modal" style="max-width:860px;" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title">Checkout</span>
+      <button class="modal-close" onclick="closeCheckout()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Shipping Address</label>
+        <textarea class="input" id="shipAddr" rows="3" placeholder="Street, City, Country" style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
+        <input type="checkbox" id="deliverRegistered" style="width:16px;height:16px;cursor:pointer"/>
+        <label for="deliverRegistered" style="cursor:pointer;font-size:.9rem">
+          Deliver to my registered address instead
+        </label>
+      </div>
+
+      <!-- Payment method -->
+      <div class="form-group" style="margin-top:1.25rem">
+        <label class="form-label">Payment Method</label>
+        <div style="display:flex;gap:1.5rem;margin-top:.4rem">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.9rem">
+            <input type="radio" name="paymentMethod" value="CASH_ON_DELIVERY" id="pmCOD" checked onchange="toggleCardFields()"/>
+            Cash on Delivery
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.9rem">
+            <input type="radio" name="paymentMethod" value="CREDIT_CARD" id="pmCC" onchange="toggleCardFields()"/>
+            Credit Card
+          </label>
+        </div>
+      </div>
+
+      <!-- Credit card fields — shown only when Credit Card is selected -->
+      <div id="cardFields" style="display:none;margin-top:.75rem;padding:1rem;background:var(--surface-alt);border-radius:var(--radius)">
+        <div class="form-group">
+          <label class="form-label">Cardholder Name</label>
+          <input class="input" id="cardName" type="text" maxlength="100"
+                 placeholder="Name as it appears on card"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Card Number</label>
+          <input class="input" id="cardNumber" type="text" maxlength="19"
+                 placeholder="XXXX-XXXX-XXXX-XXXX" style="letter-spacing:.1em"
+                 oninput="formatCardNumber(this)"/>
+        </div>
+        <div style="display:flex;gap:.75rem">
+          <div class="form-group" style="flex:1">
+            <label class="form-label">Expiry Date</label>
+            <input class="input" id="cardExpiry" type="text" maxlength="5"
+                   placeholder="MM/YY" oninput="formatExpiry(this)"/>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label class="form-label">CVV</label>
+            <input class="input" id="cardCvv" type="text" maxlength="3"
+                   placeholder="3 digits"/>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" style="flex-direction:column;gap:.75rem;align-items:stretch">
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closeCheckout()">Cancel</button>
+        <button class="btn btn-primary" id="placeOrderBtn" onclick="placeOrder()">Place Order</button>
+      </div>
+      <details style="border:1px dashed var(--border);border-radius:var(--radius);padding:.5rem .75rem">
+        <summary style="font-size:.78rem;color:var(--muted);cursor:pointer;user-select:none">Dev — Idempotency Test</summary>
+        <div style="margin-top:.6rem;display:flex;flex-direction:column;gap:.5rem">
+          <p style="font-size:.75rem;color:var(--muted);margin:0">
+            Fires 5 simultaneous checkout requests with the same idempotency key using the card fields above.
+            Only 1 should succeed; the rest should be rejected as duplicates.
+          </p>
+          <button class="btn" style="background:#f59e0b;color:#fff;font-size:.8rem"
+                  onclick="testIdempotency()">Fire 5 Requests</button>
+          <div id="idempotencyResults" style="display:none;font-size:1rem;font-family:monospace;
+               background:#0f172a;color:#e2e8f0;border-radius:8px;padding:1.2rem 1.5rem;line-height:2.2"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<!-- ── Invoice Modal ─────────────────────────────────── -->
+<div class="overlay" id="invoiceOverlay" onclick="closeInvoice()">
+  <div class="modal" style="max-width:680px;" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title">Order Confirmed</span>
+      <button class="modal-close" onclick="closeInvoice()">✕</button>
+    </div>
+    <div class="modal-body" id="invoiceBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="closeInvoice()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product Detail Overlay -->
+<div class="pd-overlay" id="pdOverlay" onclick="closePd()">
+  <div class="pd-modal" onclick="event.stopPropagation()">
+    <button class="pd-close" onclick="closePd()">✕</button>
+    <img id="pdMainImg" class="pd-main-img" src="" alt=""
+         onerror="this.style.background='#f1f3f5';this.removeAttribute('src')"/>
+    <div class="pd-imgs" id="pdImgs"></div>
+    <div class="pd-body">
+      <div class="pd-name" id="pdName"></div>
+      <div class="pd-cat"  id="pdCat"></div>
+      <div class="pd-desc" id="pdDesc"></div>
+      <div class="pd-price" id="pdPrice"></div>
+      <div id="pdStock"></div>
+      <div class="pd-qty-row" id="pdQtyRow">
+        <label>Qty</label>
+        <input class="pd-qty-input" id="pdQty" type="number" min="1" value="1"/>
+      </div>
+      <button class="btn btn-primary w-full" id="pdCartBtn" onclick="addDetailToCart()">Add to Cart</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="api.js"></script>
+<script>
+/* ── Guard ─────────────────────────────────────────── */
+Auth.guard('ROLE_CUSTOMER');
+
+/* ── State ─────────────────────────────────────────── */
+let currentPage = 0;
+
+/* ── Toast ──────────────────────────────────────────── */
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+/* ── Filter options ─────────────────────────────────── */
+async function loadFilterOptions() {
+  try {
+    const brands = await API.getBrands();
+    const sel = document.getElementById('fBrand');
+    (brands.content ?? []).forEach(b => {
+      const o = document.createElement('option');
+      o.value = b.id; o.textContent = b.name;
+      sel.appendChild(o);
+    });
+  } catch {}
+
+  try {
+    const cats = await API.getCategories();
+    const sel = document.getElementById('fCategory');
+    (cats.content ?? []).forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.name;
+      sel.appendChild(o);
+    });
+  } catch {}
+}
+
+async function loadSubcategories(preselectId = null) {
+  const catId = document.getElementById('fCategory').value;
+  const sel   = document.getElementById('fSubcat');
+  sel.innerHTML = '<option value="">All</option>';
+  if (!catId) return;
+  try {
+    const data = await API.getCategorySubcats(catId);
+    (data.content ?? []).forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.name;
+      sel.appendChild(o);
+    });
+    if (preselectId != null) sel.value = String(preselectId);
+  } catch {}
+}
+
+/* ── Search / Products ──────────────────────────────── */
+async function doSearch(page = 0) {
+  const description = document.getElementById('searchInput').value.trim() || null;
+  const brandId    = document.getElementById('fBrand').value    || null;
+  const catId      = document.getElementById('fCategory').value || null;
+  const subCatId   = document.getElementById('fSubcat').value   || null;
+  const lowerRange = document.getElementById('fMin').value      || null;
+  const higherRange= document.getElementById('fMax').value      || null;
+  currentPage = page;
+
+  document.getElementById('searchHeading').textContent = description ? `Results for "${description}"` : 'All Products';
+  document.getElementById('productGrid').innerHTML = '<div class="spinner" style="grid-column:1/-1;margin:3rem auto;"></div>';
+
+  const params = {};
+  if (description) params.description   = description;
+  if (brandId)     params.brandId        = brandId;
+  if (subCatId)    params.subCategoryId  = subCatId;
+  else if (catId)  params.parentCategoryId = catId;
+  if (lowerRange)  params.lowerRange     = lowerRange;
+  if (higherRange) params.higherRange    = higherRange;
+
+  try {
+    const data = await API.searchProductsFiltered(params, page, 12);
+    renderProducts(data);
+  } catch(err) {
+    document.getElementById('productGrid').innerHTML =
+      `<p style="grid-column:1/-1;color:var(--err);text-align:center;padding:2rem">${err.message}</p>`;
+  }
+}
+
+function renderProducts(page) {
+  const grid = document.getElementById('productGrid');
+  const items = page.content ?? page;
+  const total = page.totalElements ?? items.length;
+  document.getElementById('resultCount').textContent = `${total} product${total!==1?'s':''}`;
+
+  if (!items.length) {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:3rem">No products found.</p>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  /* store by index so onclick can reference the object safely */
+  window._shopProducts = items;
+  grid.innerHTML = items.map((p, i) => `
+    <div class="product-card" onclick="openPd(${i})">
+      <img src="${imgSrc(p.ProductModelImageUrl)}"
+           alt="${esc(p.name)}" loading="lazy"
+           onerror="this.style.background='var(--surface-alt)';this.removeAttribute('src')"/>
+      <div class="pc-body">
+        <div class="pc-name">${esc(p.name)}</div>
+        <div class="pc-meta">${esc(p.Category ?? '')}</div>
+        <div class="pc-price">$${(+p.price).toFixed(2)}</div>
+        <div class="pc-stock">${p.stock > 0 ? `${p.stock} in stock` : '<span style="color:var(--err)">Out of stock</span>'}</div>
+      </div>
+    </div>
+  `).join('');
+
+  renderPagination(page, currentPage, n => doSearch(n));
+}
+
+function renderPagination(page, current, cb) {
+  const total = page.totalPages ?? 1;
+  const pg    = document.getElementById('pagination');
+  if (total <= 1) { pg.innerHTML=''; return; }
+  let html = '';
+  if (current > 0) html += `<button class="page-btn" onclick="(${cb})(${current-1})">‹ Prev</button>`;
+  for (let i=0;i<total;i++) {
+    html += `<button class="page-btn${i===current?' active':''}" onclick="(${cb})(${i})">${i+1}</button>`;
+  }
+  if (current < total-1) html += `<button class="page-btn" onclick="(${cb})(${current+1})">Next ›</button>`;
+  pg.innerHTML = html;
+}
+
+/* ── Cart badge ─────────────────────────────────────── */
+async function refreshCartBadge() {
+  try {
+    const cart = await API.viewCart();
+    const qty  = (cart?.cartItems ?? []).reduce((s, i) => s + i.quantity, 0);
+    document.getElementById('cartCount').textContent = qty;
+  } catch {
+    document.getElementById('cartCount').textContent = 0;
+  }
+}
+
+/* ── Cart Drawer ────────────────────────────────────── */
+async function openCart() {
+  document.getElementById('cartOverlay').classList.add('open');
+  document.getElementById('cartDrawer').classList.add('open');
+  document.getElementById('cartBody').innerHTML =
+    '<div style="text-align:center;padding:2rem"><div class="spinner"></div></div>';
+  try {
+    const cart = await API.viewCart();
+    renderCartItems(cart);
+  } catch(err) {
+    if (err.message?.toLowerCase().includes('empty')) renderCartItems(null);
+    else document.getElementById('cartBody').innerHTML =
+      `<p style="color:var(--err);text-align:center;padding:2rem">${esc(err.message)}</p>`;
+  }
+}
+function closeCart() {
+  document.getElementById('cartOverlay').classList.remove('open');
+  document.getElementById('cartDrawer').classList.remove('open');
+}
+
+function renderCartItems(cart) {
+  const body  = document.getElementById('cartBody');
+  const total = document.getElementById('cartTotal');
+  const items = cart?.cartItems ?? [];
+
+  document.getElementById('cartCount').textContent =
+    items.reduce((s, i) => s + i.quantity, 0);
+
+  if (!items.length) {
+    body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem 0">Your cart is empty</p>';
+    total.textContent = '$0.00';
+    return;
+  }
+
+  body.innerHTML = items.map(item => `
+    <div class="cart-item">
+      <div class="cart-item-info" style="flex:1">
+        <div class="cart-item-name">${esc(item.productName)}</div>
+        <div class="cart-item-price">$${(+item.unitPrice).toFixed(2)} each</div>
+        <div class="drawer-item-qty">
+          <button class="qty-btn" onclick="changeCartQty(${item.productId}, -1)">−</button>
+          <span style="min-width:24px;text-align:center">${item.quantity}</span>
+          <button class="qty-btn" onclick="changeCartQty(${item.productId},  1)">+</button>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-weight:700">$${(+item.subtotal).toFixed(2)}</div>
+        <button onclick="removeCartItem(${item.productId})"
+                style="background:none;border:none;color:var(--err);cursor:pointer;font-size:.8rem;margin-top:.25rem">Remove</button>
+      </div>
+    </div>`).join('');
+  total.textContent = '$' + (+cart.totalPrice).toFixed(2);
+}
+
+async function changeCartQty(productId, delta) {
+  try {
+    const cart = await API.addToCart({ productId, quantity: delta });
+    renderCartItems(cart);
+  } catch(err) {
+    if (err.message?.toLowerCase().includes('empty')) renderCartItems(null);
+    else toast(err.message || 'Failed to update cart', 'error');
+  }
+}
+
+async function removeCartItem(productId) {
+  try {
+    const cart = await API.addToCart({ productId, quantity: -9999 });
+    renderCartItems(cart);
+  } catch(err) {
+    if (err.message?.toLowerCase().includes('empty')) renderCartItems(null);
+    else toast(err.message || 'Failed to remove item', 'error');
+  }
+}
+
+/* ── Checkout ───────────────────────────────────────── */
+let _checkoutKey = null;
+
+function openCheckout() {
+  const count = +document.getElementById('cartCount').textContent || 0;
+  if (!count) { toast('Cart is empty', 'error'); return; }
+  _checkoutKey = crypto.randomUUID(); // one key per checkout session
+  closeCart();
+  document.getElementById('checkoutOverlay').classList.add('show');
+}
+function closeCheckout() {
+  _checkoutKey = null; // discard key — next open generates a fresh one
+  document.getElementById('checkoutOverlay').classList.remove('show');
+  document.getElementById('pmCOD').checked = true;
+  document.getElementById('cardFields').style.display = 'none';
+  document.getElementById('cardName').value   = '';
+  document.getElementById('cardNumber').value = '';
+  document.getElementById('cardExpiry').value = '';
+  document.getElementById('cardCvv').value    = '';
+}
+
+function toggleCardFields() {
+  const isCc = document.getElementById('pmCC').checked;
+  document.getElementById('cardFields').style.display = isCc ? 'block' : 'none';
+}
+
+function formatCardNumber(input) {
+  const digits = input.value.replace(/\D/g, '').slice(0, 16);
+  input.value  = digits.match(/.{1,4}/g)?.join('-') ?? digits;
+}
+
+function formatExpiry(input) {
+  const digits = input.value.replace(/\D/g, '').slice(0, 4);
+  input.value  = digits.length > 2 ? digits.slice(0, 2) + '/' + digits.slice(2) : digits;
+}
+
+async function placeOrder() {
+  const useRegistered = document.getElementById('deliverRegistered').checked;
+  const addr = document.getElementById('shipAddr').value.trim();
+  if (!useRegistered && !addr) { toast('Please enter a shipping address', 'error'); return; }
+
+  const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+  let paymentRequest;
+
+  if (method === 'CREDIT_CARD') {
+    const cardName   = document.getElementById('cardName').value.trim();
+    const cardNumber = document.getElementById('cardNumber').value.replace(/-/g, '').trim();
+    const expiry     = document.getElementById('cardExpiry').value.trim();
+    const cvv        = document.getElementById('cardCvv').value.trim();
+    if (!cardName)                                    { toast('Cardholder name is required', 'error'); return; }
+    if (cardName.length < 2)                          { toast('Cardholder name is too short', 'error'); return; }
+    if (cardNumber.length !== 16)                     { toast('Card number must be 16 digits', 'error'); return; }
+    if (!/^\d+$/.test(cardNumber))                    { toast('Card number must contain only digits', 'error'); return; }
+    if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expiry)) { toast('Expiry must be in MM/YY format', 'error'); return; }
+    if (cvv.length !== 3)                             { toast('CVV must be 3 digits', 'error'); return; }
+    if (!/^\d+$/.test(cvv))                           { toast('CVV must contain only digits', 'error'); return; }
+    paymentRequest = {
+      paymentMethod:    'CREDIT_CARD',
+      cardHolderName:   cardName,
+      creditCardNumber: cardNumber,
+      expiryDate:       expiry,
+      cvv:              cvv,
+      idempotencyKey:   _checkoutKey,
+    };
+  } else {
+    paymentRequest = { paymentMethod: 'CASH_ON_DELIVERY', idempotencyKey: _checkoutKey };
+  }
+
+  const dto = {
+    deliverToRegisteredAddress: useRegistered,
+    shippingAddress: addr || null,
+    paymentRequest,
+  };
+
+  const btn = document.getElementById('placeOrderBtn');
+  btn.disabled = true; btn.textContent = 'Placing order…';
+  try {
+    const order = await API.checkout(dto);
+    closeCheckout();
+    document.getElementById('cartCount').textContent = 0;
+    showInvoice(order.orderId);
+  } catch(err) {
+    toast(err.message || 'Checkout failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Place Order';
+  }
+}
+
+/* ── Idempotency Test ───────────────────────────────── */
+async function testIdempotency() {
+  const method     = document.querySelector('input[name="paymentMethod"]:checked').value;
+  const sharedKey  = crypto.randomUUID();
+  const useRegistered = document.getElementById('deliverRegistered').checked;
+  const addr       = document.getElementById('shipAddr').value.trim();
+
+  let paymentRequest;
+  if (method === 'CREDIT_CARD') {
+    const cardName   = document.getElementById('cardName').value.trim();
+    const cardNumber = document.getElementById('cardNumber').value.replace(/-/g, '').trim();
+    const expiry     = document.getElementById('cardExpiry').value.trim();
+    const cvv        = document.getElementById('cardCvv').value.trim();
+    if (!cardName || cardNumber.length !== 16 || !/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expiry) || cvv.length !== 3) {
+      toast('Fill in all credit card fields before running the test', 'error');
+      return;
+    }
+    paymentRequest = {
+      paymentMethod: 'CREDIT_CARD', cardHolderName: cardName,
+      creditCardNumber: cardNumber, expiryDate: expiry,
+      cvv, idempotencyKey: sharedKey,
+    };
+  } else {
+    paymentRequest = { paymentMethod: 'CASH_ON_DELIVERY', idempotencyKey: sharedKey };
+  }
+
+  const resultsEl = document.getElementById('idempotencyResults');
+  resultsEl.style.display = 'block';
+  resultsEl.textContent   = 'Firing 5 requests…';
+
+  const dto = {
+    deliverToRegisteredAddress: useRegistered,
+    shippingAddress: addr || null,
+    paymentRequest,
+  };
+
+  const results = await Promise.allSettled([
+    API.checkout(dto), API.checkout(dto), API.checkout(dto),
+    API.checkout(dto), API.checkout(dto),
+  ]);
+
+  let html = `<div style="color:#94a3b8;font-size:.85rem;margin-bottom:.5rem">Shared key: ${sharedKey}</div>`;
+  let successes = 0, failures = 0;
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      successes++;
+      html += `<div style="color:#4ade80">Request ${i + 1}: ✅ SUCCESS — Order #${r.value.orderId}</div>`;
+    } else {
+      failures++;
+      html += `<div style="color:#f87171">Request ${i + 1}: ❌ REJECTED — ${r.reason.message}</div>`;
+    }
+  });
+  html += `<div style="color:#fff;font-size:1.1rem;font-weight:700;margin-top:.75rem;padding-top:.5rem;border-top:1px solid #334155">→ ${successes} succeeded · ${failures} rejected</div>`;
+  resultsEl.innerHTML = html;
+}
+
+/* ── Invoice ────────────────────────────────────────── */
+async function showInvoice(orderId) {
+  document.getElementById('invoiceBody').innerHTML =
+    '<div style="text-align:center;padding:2rem"><div class="spinner"></div></div>';
+  document.getElementById('invoiceOverlay').classList.add('show');
+  try {
+    const inv = await API.getInvoice(orderId);
+    renderInvoice(inv);
+  } catch(err) {
+    document.getElementById('invoiceBody').innerHTML =
+      `<p style="color:var(--err);text-align:center;padding:2rem">${esc(err.message)}</p>`;
+  }
+}
+
+function renderInvoice(inv) {
+  const items = inv.orderItems ?? [];
+  document.getElementById('invoiceBody').innerHTML = `
+    <div class="invoice-header">
+      <h3>Invoice — Order #${inv.orderId}</h3>
+      <p>${new Date(inv.generatedAt ?? Date.now()).toLocaleString()}</p>
+    </div>
+    <table class="inv-table">
+      <thead><tr>
+        <th colspan="2">Product</th>
+        <th style="text-align:center">Qty</th>
+        <th style="text-align:right">Unit Price</th>
+        <th style="text-align:right">Subtotal</th>
+      </tr></thead>
+      <tbody>
+        ${items.map(i => `<tr>
+          <td style="width:60px"><img class="inv-item-img" src="${imgSrc(i.imageUrl)}" alt=""
+               onerror="this.style.display='none'"/></td>
+          <td>${esc(i.productName)}</td>
+          <td style="text-align:center">${i.quantity}</td>
+          <td style="text-align:right">$${(+i.unitPrice).toFixed(2)}</td>
+          <td style="text-align:right">$${(+i.subtotal).toFixed(2)}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot>
+        <tr class="inv-total-row">
+          <td colspan="4" style="text-align:right;padding-right:1rem">Total</td>
+          <td style="text-align:right;color:var(--accent)">$${(+inv.totalPrice).toFixed(2)}</td>
+        </tr>
+      </tfoot>
+    </table>`;
+}
+
+function closeInvoice() {
+  document.getElementById('invoiceOverlay').classList.remove('show');
+}
+
+/* ── Product Detail Overlay ─────────────────────────── */
+let _detailProduct = null;
+
+function openPd(idx) {
+  const p = window._shopProducts?.[idx];
+  if (!p) return;
+  _detailProduct = p;
+
+  /* Main image = model image; fall back to product image */
+  const modelSrc   = imgSrc(p.ProductModelImageUrl);
+  const productSrc = imgSrc(p.ProductImageUrl);
+  const mainImg    = document.getElementById('pdMainImg');
+
+  mainImg.src = modelSrc || productSrc || '';
+
+  /* Thumbnail strip: show both if both exist */
+  const imgsDiv = document.getElementById('pdImgs');
+  const thumbs  = [];
+  if (modelSrc)   thumbs.push({ src: modelSrc,   label: 'Model' });
+  if (productSrc) thumbs.push({ src: productSrc, label: 'Product' });
+
+  if (thumbs.length > 1) {
+    imgsDiv.innerHTML = thumbs.map((t, i) => `
+      <img class="pd-thumb${i===0?' active':''}" src="${t.src}" alt="${t.label}"
+           title="${t.label} image"
+           onclick="switchPdImg(this,'${t.src}')"
+           onerror="this.style.display='none'"/>`).join('');
+    imgsDiv.style.display = 'flex';
+  } else {
+    imgsDiv.innerHTML = '';
+    imgsDiv.style.display = 'none';
+  }
+
+  document.getElementById('pdName').textContent  = p.name ?? '—';
+  document.getElementById('pdCat').textContent   = p.Category ?? '';
+  document.getElementById('pdDesc').textContent  = p.description ?? '';
+  document.getElementById('pdPrice').textContent = '$' + (+p.price).toFixed(2);
+
+  const inStock = (p.stock ?? 0) > 0;
+  document.getElementById('pdStock').innerHTML = inStock
+    ? `<span class="pd-stock-ok">✓ ${p.stock} in stock</span>`
+    : `<span class="pd-stock-out">Out of stock</span>`;
+
+  const qtyInput = document.getElementById('pdQty');
+  qtyInput.value = 1;
+  qtyInput.max   = p.stock ?? 1;
+
+  const cartBtn = document.getElementById('pdCartBtn');
+  cartBtn.disabled    = !inStock;
+  cartBtn.textContent = 'Add to Cart';
+
+  document.getElementById('pdOverlay').classList.add('show');
+}
+
+function switchPdImg(thumbEl, src) {
+  document.getElementById('pdMainImg').src = src;
+  document.querySelectorAll('.pd-thumb').forEach(t => t.classList.remove('active'));
+  thumbEl.classList.add('active');
+}
+
+function closePd() {
+  document.getElementById('pdOverlay').classList.remove('show');
+  _detailProduct = null;
+}
+
+async function addDetailToCart() {
+  if (!_detailProduct) return;
+  const qty = Math.max(1, Math.min(+document.getElementById('pdQty').value || 1, _detailProduct.stock ?? 1));
+  const btn = document.getElementById('pdCartBtn');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    await API.addToCart({ productId: _detailProduct.id, quantity: qty });
+    toast(`${_detailProduct.name} × ${qty} added to cart`, 'ok');
+    refreshCartBadge();
+    closePd();
+  } catch(err) {
+    toast(err.message || 'Failed to add to cart', 'error');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Add to Cart';
+  }
+}
+
+/* ── Browse views ───────────────────────────────────── */
+let _browseCatId = null;
+window._brands  = [];
+window._cats    = [];
+window._subcats = [];
+
+function switchView(view) {
+  document.getElementById('tabProducts').classList.toggle('active',   view === 'products');
+  document.getElementById('tabBrands').classList.toggle('active',     view === 'brands');
+  document.getElementById('tabCategories').classList.toggle('active', view === 'categories');
+  document.querySelector('main').style.display            = view === 'products'   ? '' : 'none';
+  document.getElementById('brandsView').style.display     = view === 'brands'     ? '' : 'none';
+  document.getElementById('categoriesView').style.display = view === 'categories' ? '' : 'none';
+  if (view === 'brands')     loadBrandsView();
+  if (view === 'categories') loadCategoriesView();
+}
+
+async function loadBrandsView() {
+  const grid = document.getElementById('brandsGrid');
+  grid.innerHTML = '<div class="spinner" style="grid-column:1/-1;margin:3rem auto;"></div>';
+  try {
+    const data = await API.getBrands();
+    window._brands = data.content ?? [];
+    if (!window._brands.length) {
+      grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1">No brands found.</p>'; return;
+    }
+    grid.innerHTML = window._brands.map((b, i) => `
+      <div class="browse-card" onclick="filterByBrand(${i})">
+        <img src="${imgSrc(b.imageUrl ?? '')}" alt="${esc(b.name)}"
+             onerror="this.style.display='none'"/>
+        <div class="bc-name">${esc(b.name)}</div>
+      </div>`).join('');
+  } catch(err) {
+    grid.innerHTML = `<p style="color:var(--err);grid-column:1/-1">${esc(err.message)}</p>`;
+  }
+}
+
+function filterByBrand(idx) {
+  const b = window._brands[idx];
+  if (!b) return;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('fBrand').value      = b.id;
+  document.getElementById('fCategory').value   = '';
+  document.getElementById('fSubcat').innerHTML = '<option value="">All</option>';
+  document.getElementById('fMin').value        = '';
+  document.getElementById('fMax').value        = '';
+  switchView('products');
+  doSearch(0);
+}
+
+async function loadCategoriesView() {
+  _browseCatId = null;
+  document.getElementById('catHeading').textContent    = 'Shop by Category';
+  document.getElementById('catSubheading').textContent = 'Click a category to explore';
+  document.getElementById('catBreadcrumb').style.display = 'none';
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '<div class="spinner" style="grid-column:1/-1;margin:3rem auto;"></div>';
+  try {
+    const data = await API.getCategories();
+    window._cats = data.content ?? [];
+    if (!window._cats.length) {
+      grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1">No categories found.</p>'; return;
+    }
+    grid.innerHTML = window._cats.map((c, i) => `
+      <div class="browse-card" onclick="loadSubcatsView(${i})">
+        <img src="${imgSrc(c.imageUrl ?? '')}" alt="${esc(c.name)}"
+             onerror="this.style.display='none'"/>
+        <div class="bc-name">${esc(c.name)}</div>
+      </div>`).join('');
+  } catch(err) {
+    grid.innerHTML = `<p style="color:var(--err);grid-column:1/-1">${esc(err.message)}</p>`;
+  }
+}
+
+async function loadSubcatsView(catIdx) {
+  const cat = window._cats[catIdx];
+  if (!cat) return;
+  _browseCatId = cat.id;
+  document.getElementById('catHeading').textContent    = esc(cat.name);
+  document.getElementById('catSubheading').textContent = 'Click a subcategory to view products';
+  const bc = document.getElementById('catBreadcrumb');
+  bc.style.display = 'flex';
+  bc.innerHTML = `<button onclick="loadCategoriesView()">All Categories</button> › ${esc(cat.name)}`;
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '<div class="spinner" style="grid-column:1/-1;margin:3rem auto;"></div>';
+  try {
+    const data = await API.getCategorySubcats(cat.id);
+    window._subcats = data.content ?? [];
+    if (!window._subcats.length) {
+      grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1">No subcategories found.</p>'; return;
+    }
+    grid.innerHTML = window._subcats.map((s, i) => `
+      <div class="browse-card" onclick="filterBySubcat(${i})">
+        <img src="${imgSrc(s.imageUrl ?? '')}" alt="${esc(s.name)}"
+             onerror="this.style.display='none'"/>
+        <div class="bc-name">${esc(s.name)}</div>
+      </div>`).join('');
+  } catch(err) {
+    grid.innerHTML = `<p style="color:var(--err);grid-column:1/-1">${esc(err.message)}</p>`;
+  }
+}
+
+async function filterBySubcat(subcatIdx) {
+  const s = window._subcats[subcatIdx];
+  if (!s) return;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('fBrand').value      = '';
+  document.getElementById('fMin').value        = '';
+  document.getElementById('fMax').value        = '';
+  document.getElementById('fCategory').value   = _browseCatId;
+  switchView('products');
+  await loadSubcategories(s.id);
+  doSearch(0);
+}
+
+/* ── Misc ───────────────────────────────────────────── */
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('fBrand').value    = '';
+  document.getElementById('fCategory').value = '';
+  document.getElementById('fSubcat').innerHTML = '<option value="">All</option>';
+  document.getElementById('fMin').value = '';
+  document.getElementById('fMax').value = '';
+  doSearch(0);
+}
+
+function doLogout() {
+  Auth.clear();
+  window.location.href = 'index.html';
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Init ───────────────────────────────────────────── */
+loadFilterOptions();
+doSearch(0);
+refreshCartBadge();
+</script>
+</body>
+</html>

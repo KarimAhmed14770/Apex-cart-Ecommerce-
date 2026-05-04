@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>KeeConnect – Welcome</title>
+  <link rel="stylesheet" href="app.css"/>
+  <style>
+    /* ── Auth page layout ─────────────────────────────── */
+    body { margin:0; min-height:100vh; display:flex; flex-direction:column; background:var(--bg); }
+
+    .auth-shell {
+      flex:1; display:grid;
+      grid-template-columns: 1fr 1fr;
+      min-height:100vh;
+    }
+    @media(max-width:768px){ .auth-shell{ grid-template-columns:1fr; } }
+
+    /* Left panel – branding */
+    .auth-brand {
+      background: linear-gradient(135deg, var(--navy) 0%, #2d2d5a 60%, var(--accent) 100%);
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+      padding:3rem; text-align:center; color:#fff;
+      position:relative; overflow:hidden;
+    }
+    .auth-brand::before {
+      content:''; position:absolute; inset:0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .auth-brand .logo {
+      font-size:2.8rem; font-weight:800; letter-spacing:-1px;
+      margin-bottom:.5rem; position:relative;
+    }
+    .auth-brand .logo span { color:var(--accent); }
+    .auth-brand .tagline { font-size:1.1rem; opacity:.8; max-width:320px; line-height:1.6; position:relative; }
+    .brand-pills {
+      display:flex; gap:.75rem; flex-wrap:wrap; justify-content:center;
+      margin-top:2.5rem; position:relative;
+    }
+    .brand-pill {
+      background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2);
+      border-radius:2rem; padding:.4rem 1rem; font-size:.82rem; backdrop-filter:blur(4px);
+    }
+
+    /* Right panel – form */
+    .auth-form-panel {
+      display:flex; flex-direction:column; justify-content:center;
+      align-items:center; padding:3rem 2rem; overflow-y:auto;
+    }
+    .auth-box { width:100%; max-width:420px; }
+    .auth-box h2 { font-size:1.5rem; margin:0 0 .25rem; color:var(--navy); }
+    .auth-box .sub { color:var(--muted); font-size:.9rem; margin-bottom:1.75rem; }
+
+    /* Role tabs */
+    .role-tabs {
+      display:grid; grid-template-columns:1fr 1fr;
+      background:var(--surface-alt); border-radius:var(--radius); padding:.25rem;
+      margin-bottom:1.5rem; gap:.25rem;
+    }
+    .role-tab {
+      padding:.55rem; text-align:center; font-size:.85rem; font-weight:600;
+      border-radius:calc(var(--radius) - 2px); cursor:pointer; color:var(--muted);
+      transition:var(--tr); border:none; background:transparent;
+    }
+    .role-tab.active { background:#fff; color:var(--navy); box-shadow:var(--shadow-sm); }
+
+    /* Mode switcher */
+    .mode-switch {
+      display:flex; gap:.5rem; margin-bottom:1.5rem;
+    }
+    .mode-btn {
+      flex:1; padding:.55rem; text-align:center; font-size:.85rem; font-weight:600;
+      border:2px solid var(--border); border-radius:var(--radius); cursor:pointer;
+      background:#fff; color:var(--muted); transition:var(--tr);
+    }
+    .mode-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(212,84,58,.06); }
+
+    .form-section { display:none; }
+    .form-section.visible { display:block; }
+
+    .auth-footer { text-align:center; margin-top:1.5rem; font-size:.85rem; color:var(--muted); }
+    .auth-footer a { color:var(--accent); text-decoration:none; font-weight:600; }
+
+    .divider { border:none; border-top:1px solid var(--border); margin:1.25rem 0; }
+    @media(max-width:768px){ .auth-brand{ display:none; } }
+  </style>
+</head>
+<body>
+
+<div class="auth-shell">
+
+  <!-- ── Brand panel ────────────────────────────────── -->
+  <div class="auth-brand">
+    <div class="logo">Kee<span>Connect</span></div>
+    <p class="tagline">The multivendor marketplace where brands meet customers — seamlessly.</p>
+    <div class="brand-pills">
+      <span class="brand-pill">Verified Vendors</span>
+      <span class="brand-pill">Secure Checkout</span>
+      <span class="brand-pill">Smart Catalog</span>
+      <span class="brand-pill">Real-time Inventory</span>
+    </div>
+  </div>
+
+  <!-- ── Form panel ─────────────────────────────────── -->
+  <div class="auth-form-panel">
+    <div class="auth-box">
+      <h2 id="formTitle">Welcome back</h2>
+      <p class="sub" id="formSub">Sign in to your account to continue</p>
+
+      <!-- Mode switch -->
+      <div class="mode-switch">
+        <button class="mode-btn active" id="btnLogin"  onclick="setMode('login')">Sign In</button>
+        <button class="mode-btn"        id="btnReg"    onclick="setMode('register')">Register</button>
+      </div>
+
+      <!-- ── LOGIN ───────────────────────────────────── -->
+      <div class="form-section visible" id="secLogin">
+        <form onsubmit="doLogin(event)">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input class="input" id="loginUser" type="text" placeholder="your.username" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input class="input" id="loginPass" type="password" placeholder="••••••••" required/>
+          </div>
+          <button class="btn btn-primary w-full mt-1" type="submit" id="loginBtn">Sign In</button>
+        </form>
+        <p class="auth-footer">No account? <a href="#" onclick="setMode('register');return false;">Register here</a></p>
+      </div>
+
+      <!-- ── REGISTER ────────────────────────────────── -->
+      <div class="form-section" id="secRegister">
+        <!-- Role tabs -->
+        <div class="role-tabs">
+          <button class="role-tab active" id="tabCust" onclick="setRole('customer')">Customer</button>
+          <button class="role-tab"        id="tabVend" onclick="setRole('vendor')">Vendor / Seller</button>
+        </div>
+
+        <!-- Customer registration -->
+        <form class="form-section visible" id="frmCust" onsubmit="doRegister(event,'customer')">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">First Name</label>
+              <input class="input" id="cFirst" type="text" placeholder="Jane" required/>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Last Name</label>
+              <input class="input" id="cLast" type="text" placeholder="Doe" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input class="input" id="cUser" type="text" placeholder="jane.doe" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="input" id="cEmail" type="email" placeholder="jane@example.com" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input class="input" id="cPass" type="password" placeholder="min 8 characters" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone (optional)</label>
+            <input class="input" id="cPhone" type="tel" placeholder="+1 555 000 0000"/>
+          </div>
+          <button class="btn btn-primary w-full mt-1" type="submit">Create Account</button>
+        </form>
+
+        <!-- Vendor registration -->
+        <form class="form-section" id="frmVend" onsubmit="doRegister(event,'vendor')">
+          <div class="form-group">
+            <label class="form-label">Full Name <span style="color:var(--err)">*</span></label>
+            <input class="input" id="vName" type="text" placeholder="John Smith" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username <span style="color:var(--err)">*</span></label>
+            <input class="input" id="vUser" type="text" placeholder="john.smith" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email <span style="color:var(--err)">*</span></label>
+            <input class="input" id="vEmail" type="email" placeholder="john@business.com" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password <span style="color:var(--err)">*</span></label>
+            <input class="input" id="vPass" type="password" placeholder="min 8 characters" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <input class="input" id="vAddress" type="text" placeholder="123 Main St, City, Country"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Business Description</label>
+            <textarea class="input" id="vDesc" rows="2" placeholder="Briefly describe your business…" style="resize:vertical"></textarea>
+          </div>
+          <div class="note-box" style="background:rgba(212,84,58,.07);border:1px solid rgba(212,84,58,.25);border-radius:var(--radius);padding:.75rem 1rem;font-size:.82rem;color:var(--accent);margin-bottom:1rem;">
+            Your vendor account will be reviewed by an admin before activation.
+          </div>
+          <button class="btn btn-primary w-full" type="submit">Apply as Vendor</button>
+        </form>
+
+        <p class="auth-footer" style="margin-top:1rem;">
+          Already have an account? <a href="#" onclick="setMode('login');return false;">Sign in</a>
+        </p>
+      </div>
+
+    </div><!-- /auth-box -->
+  </div><!-- /auth-form-panel -->
+
+</div><!-- /auth-shell -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="api.js"></script>
+<script>
+/* ── redirect if already logged in ─────────────────── */
+if (Auth.isIn()) Auth.redirectHome();
+
+/* ── UI helpers ─────────────────────────────────────── */
+function setMode(m) {
+  const isLogin = m === 'login';
+  document.getElementById('btnLogin').classList.toggle('active', isLogin);
+  document.getElementById('btnReg').classList.toggle('active', !isLogin);
+  document.getElementById('secLogin').classList.toggle('visible', isLogin);
+  document.getElementById('secRegister').classList.toggle('visible', !isLogin);
+  document.getElementById('formTitle').textContent = isLogin ? 'Welcome back' : 'Create your account';
+  document.getElementById('formSub').textContent  = isLogin
+    ? 'Sign in to your account to continue'
+    : 'Join KeeConnect today';
+}
+
+let currentRole = 'customer';
+function setRole(r) {
+  currentRole = r;
+  const isCust = r === 'customer';
+  document.getElementById('tabCust').classList.toggle('active', isCust);
+  document.getElementById('tabVend').classList.toggle('active', !isCust);
+  document.getElementById('frmCust').classList.toggle('visible', isCust);
+  document.getElementById('frmVend').classList.toggle('visible', !isCust);
+}
+
+/* ── Toast ──────────────────────────────────────────── */
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+/* ── Login ──────────────────────────────────────────── */
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const data = await API.login({
+      userName: document.getElementById('loginUser').value.trim(),
+      password: document.getElementById('loginPass').value,
+    });
+    Auth.save(data.token ?? data.jwt ?? data);
+    Auth.redirectHome();
+  } catch(err) {
+    toast(err.message || 'Login failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
+/* ── Register ───────────────────────────────────────── */
+async function doRegister(e, role) {
+  e.preventDefault();
+  const isC = role === 'customer';
+  const dto = isC ? {
+    firstName  : document.getElementById('cFirst').value.trim(),
+    lastName   : document.getElementById('cLast').value.trim(),
+    userName   : document.getElementById('cUser').value.trim(),
+    email      : document.getElementById('cEmail').value.trim(),
+    password   : document.getElementById('cPass').value,
+    phoneNumber: document.getElementById('cPhone').value.trim() || null,
+  } : {
+    name       : document.getElementById('vName').value.trim(),
+    userName   : document.getElementById('vUser').value.trim(),
+    email      : document.getElementById('vEmail').value.trim(),
+    password   : document.getElementById('vPass').value,
+    address    : document.getElementById('vAddress').value.trim() || null,
+    description: document.getElementById('vDesc').value.trim()   || null,
+  };
+
+  const btn = e.submitter;
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    await (isC ? API.registerCustomer(dto) : API.registerVendor(dto));
+    toast('Account created! Please sign in.', 'ok');
+    setTimeout(() => setMode('login'), 1200);
+  } catch(err) {
+    toast(err.message || 'Registration failed', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = isC ? 'Create Account' : 'Apply as Vendor';
+  }
+}
+</script>
+</body>
+</html>

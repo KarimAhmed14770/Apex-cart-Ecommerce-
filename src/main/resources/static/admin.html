@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>KeeConnect – Admin</title>
+  <link rel="stylesheet" href="app.css"/>
+  <style>
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .thumb { width:40px; height:40px; object-fit:cover; border-radius:6px; background:var(--surface-alt); }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Nav ──────────────────────────────────────── -->
+<nav class="topnav">
+  <div class="topnav-brand">Kee<span>Connect</span> <span style="font-size:.7rem;opacity:.6;margin-left:.25rem">Admin</span></div>
+  <div class="topnav-actions">
+    <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ── Shell ────────────────────────────────────────── -->
+<div class="shell">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Users</div>
+    <a class="sidebar-link active" onclick="show('customers')">👥 Customers</a>
+    <a class="sidebar-link"        onclick="show('vendors')">🏪 Vendors</a>
+    <div class="sidebar-section">Catalog</div>
+    <a class="sidebar-link" onclick="show('categories')">🗂 Categories</a>
+    <a class="sidebar-link" onclick="show('brands')">🏷 Brands</a>
+    <a class="sidebar-link" onclick="show('productModels')">📱 Product Models</a>
+    <div class="sidebar-section">Requests</div>
+    <a class="sidebar-link" onclick="show('productRequests')">📋 Product Requests</a>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- ══ CUSTOMERS ════════════════════════════════ -->
+    <section id="secCustomers" class="section active">
+      <div class="page-header">
+        <div><h1 class="page-title">Customers</h1><p class="page-sub">Manage registered customers</p></div>
+        <button class="btn btn-sm" onclick="loadCustomers()">Refresh</button>
+      </div>
+      <!-- Search -->
+      <div class="filter-bar" style="margin-bottom:1rem;display:flex;gap:.75rem;flex-wrap:wrap;">
+        <input class="input" id="csFirst"    placeholder="First name…"  style="max-width:150px;margin:0"/>
+        <input class="input" id="csLast"     placeholder="Last name…"   style="max-width:150px;margin:0"/>
+        <input class="input" id="csUsername" placeholder="Username…"    style="max-width:150px;margin:0"/>
+        <input class="input" id="csEmail"    placeholder="Email…"       style="max-width:180px;margin:0"/>
+        <input class="input" id="csStatus"   placeholder="Status…"      style="max-width:140px;margin:0"/>
+        <button class="btn btn-primary" onclick="searchCustomers()">Search</button>
+        <button class="btn btn-ghost"   onclick="clearAndLoad('customer')">Clear</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Photo</th><th>ID</th><th>Name</th><th>Phone</th><th>Shipping Address</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="tbCustomers"><tr><td colspan="7" class="tbl-loading"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pgCustomers"></div>
+    </section>
+
+    <!-- ══ VENDORS ══════════════════════════════════ -->
+    <section id="secVendors" class="section">
+      <div class="page-header">
+        <div><h1 class="page-title">Vendors</h1><p class="page-sub">Review and manage vendors</p></div>
+        <button class="btn btn-sm" onclick="loadVendors()">Refresh</button>
+      </div>
+      <div class="filter-bar" style="margin-bottom:1rem;display:flex;gap:.75rem;flex-wrap:wrap;">
+        <input class="input" id="vsName"    placeholder="Name…"    style="max-width:180px;margin:0"/>
+        <input class="input" id="vsAddress" placeholder="Address…" style="max-width:180px;margin:0"/>
+        <input class="input" id="vsStatus"  placeholder="Status…"  style="max-width:140px;margin:0"/>
+        <button class="btn btn-primary" onclick="searchVendors()">Search</button>
+        <button class="btn btn-ghost"   onclick="clearAndLoad('vendor')">Clear</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Photo</th><th>ID</th><th>Name</th><th>Address</th><th>Rating</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="tbVendors"><tr><td colspan="7" class="tbl-loading"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pgVendors"></div>
+    </section>
+
+    <!-- ══ CATEGORIES ═══════════════════════════════ -->
+    <section id="secCategories" class="section">
+      <div class="page-header">
+        <div><h1 class="page-title">Categories</h1><p class="page-sub">Manage product categories and subcategories</p></div>
+        <button class="btn btn-primary" onclick="openCatModal()">+ Add Category</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Image</th><th>ID</th><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="tbCategories"><tr><td colspan="5" class="tbl-loading"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pgCategories"></div>
+
+      <!-- Subcategories panel (shown inline when category selected) -->
+      <div id="subcatPanel" style="display:none;margin-top:1.5rem;">
+        <div class="page-header" style="margin-bottom:.75rem;">
+          <div>
+            <h2 style="margin:0;font-size:1.1rem;color:var(--navy)">Subcategories of: <span id="subcatCatName"></span></h2>
+          </div>
+          <div style="display:flex;gap:.75rem;">
+            <button class="btn btn-primary" onclick="openSubcatModal()">+ Add Subcategory</button>
+            <button class="btn btn-ghost"   onclick="closeSubcats()">✕ Close</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Image</th><th>ID</th><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="tbSubcats"><tr><td colspan="5" class="tbl-loading"><div class="spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pgSubcats"></div>
+      </div>
+    </section>
+
+    <!-- ══ BRANDS ════════════════════════════════════ -->
+    <section id="secBrands" class="section">
+      <div class="page-header">
+        <div><h1 class="page-title">Brands</h1><p class="page-sub">Manage product brands</p></div>
+        <button class="btn btn-primary" onclick="openBrandModal()">+ Add Brand</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Image</th><th>ID</th><th>Name</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="tbBrands"><tr><td colspan="6" class="tbl-loading"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pgBrands"></div>
+    </section>
+
+    <!-- ══ PRODUCT MODELS ════════════════════════════ -->
+    <section id="secProductModels" class="section">
+      <div class="page-header">
+        <div><h1 class="page-title">Product Models</h1><p class="page-sub">Manage product model catalog</p></div>
+        <button class="btn btn-primary" onclick="openModelModal()">+ Add Model</button>
+      </div>
+      <div class="filter-bar" style="margin-bottom:1rem;display:flex;gap:.75rem;flex-wrap:wrap;">
+        <input class="input" id="pmName"    placeholder="Name…"     style="max-width:180px;margin:0"/>
+        <input class="input" id="pmStatus"  placeholder="Status…"   style="max-width:200px;margin:0"/>
+        <button class="btn btn-primary" onclick="searchModels()">Search</button>
+        <button class="btn btn-ghost"   onclick="clearAndLoad('model')">Clear</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Image</th><th>ID</th><th>Name</th><th>Brand</th><th>Subcategory</th><th>Global</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="tbModels"><tr><td colspan="8" class="tbl-loading"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pgModels"></div>
+    </section>
+
+    <!-- ══ PRODUCT REQUESTS ═════════════════════════ -->
+    <section id="secProductRequests" class="section">
+      <div class="page-header">
+        <div><h1 class="page-title">Product Requests</h1><p class="page-sub">Vendor product addition requests</p></div>
+        <button class="btn btn-sm" onclick="loadProductRequests()">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Image</th><th>ID</th><th>Name</th><th>Description</th><th>Global</th><th>Status</th></tr></thead>
+          <tbody id="tbProductRequests"><tr><td colspan="6" class="tbl-loading"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pgProductRequests"></div>
+    </section>
+
+  </main>
+</div><!-- /shell -->
+
+<!-- ══ MODALS ════════════════════════════════════════ -->
+
+<!-- Status change modal -->
+<div class="overlay" id="statusOverlay" onclick="closeStatusModal()">
+  <div class="modal" id="statusModal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title" id="statusModalTitle">Change Status</span>
+      <button class="modal-close" onclick="closeStatusModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;padding:1rem;background:var(--surface-alt);border-radius:var(--radius);">
+        <div id="statusModalAvatar" style="width:48px;height:48px;flex-shrink:0;"></div>
+        <div>
+          <div id="statusModalName" style="font-weight:600;color:var(--navy)"></div>
+          <div id="statusModalMeta" style="font-size:.82rem;color:var(--muted)"></div>
+        </div>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">New Status</label>
+        <select class="input" id="statusSelect"></select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeStatusModal()">Cancel</button>
+      <button class="btn btn-primary" id="statusSaveBtn" onclick="saveStatus()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category modal -->
+<div class="overlay" id="catOverlay" onclick="closeCatModal()">
+  <div class="modal" id="catModal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title" id="catModalTitle">Category</span>
+      <button class="modal-close" onclick="closeCatModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Live image preview -->
+      <div id="catImgWrap">
+        <div class="modal-img-placeholder" id="catImgPlaceholder">No image yet</div>
+        <img class="modal-img-preview" id="catImgPreview" src="" alt="" style="display:none"
+             onerror="this.style.display='none';document.getElementById('catImgPlaceholder').style.display='flex'"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Name <span style="color:var(--err)">*</span></label>
+        <input class="input" id="catName" type="text" placeholder="e.g. Electronics" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="input" id="catDesc" rows="2" placeholder="Optional description…" style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group" style="margin:0" id="catImageRow">
+        <label class="form-label">Image <span id="catImageRequired" style="color:var(--err)">*</span></label>
+        <input class="input" id="catImageFile" type="file" accept="image/*"
+               onchange="previewFileInput('catImageFile','catImgPreview','catImgPlaceholder')"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeCatModal()">Cancel</button>
+      <button class="btn btn-primary" id="catSaveBtn" onclick="saveCategory()">Save Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category detail modal -->
+<div class="overlay" id="overlayCatView" onclick="closeViewCatModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title">Category Details</span>
+      <button class="modal-close" onclick="closeViewCatModal()">✕</button>
+    </div>
+    <div class="modal-body" id="viewCatBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeViewCatModal()">Close</button>
+      <button class="btn btn-primary" id="viewCatEditBtn">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Subcategory detail modal -->
+<div class="overlay" id="overlaySubcatView" onclick="closeViewSubcatModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title">Subcategory Details</span>
+      <button class="modal-close" onclick="closeViewSubcatModal()">✕</button>
+    </div>
+    <div class="modal-body" id="viewSubcatBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeViewSubcatModal()">Close</button>
+      <button class="btn btn-primary" id="viewSubcatEditBtn">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Subcategory modal -->
+<div class="overlay" id="subcatOverlay" onclick="closeSubcatModal()">
+  <div class="modal" id="subcatModal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title" id="subcatModalTitle">Subcategory</span>
+      <button class="modal-close" onclick="closeSubcatModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-img-placeholder" id="subcatImgPlaceholder">No image yet</div>
+      <img class="modal-img-preview" id="subcatImgPreview" src="" alt="" style="display:none"
+           onerror="this.style.display='none';document.getElementById('subcatImgPlaceholder').style.display='flex'"/>
+      <p style="color:var(--muted);font-size:.83rem;margin-bottom:1rem">
+        Parent: <strong id="subcatParentLabel" style="color:var(--navy)"></strong>
+      </p>
+      <div class="form-group">
+        <label class="form-label">Name <span style="color:var(--err)">*</span></label>
+        <input class="input" id="subcatName" type="text" placeholder="e.g. Smartphones" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="input" id="subcatDesc" rows="2" placeholder="Optional description…" style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group" style="margin:0" id="subcatImageRow">
+        <label class="form-label">Image <span id="subcatImageRequired" style="color:var(--err)">*</span></label>
+        <input class="input" id="subcatImageFile" type="file" accept="image/*"
+               onchange="previewFileInput('subcatImageFile','subcatImgPreview','subcatImgPlaceholder')"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeSubcatModal()">Cancel</button>
+      <button class="btn btn-primary" id="subcatSaveBtn" onclick="saveSubcategory()">Save Subcategory</button>
+    </div>
+  </div>
+</div>
+
+<!-- Brand detail modal -->
+<div class="overlay" id="overlayBrandView" onclick="closeViewBrandModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title">Brand Details</span>
+      <button class="modal-close" onclick="closeViewBrandModal()">✕</button>
+    </div>
+    <div class="modal-body" id="viewBrandBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeViewBrandModal()">Close</button>
+      <button class="btn btn-primary" id="viewBrandEditBtn">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Brand modal -->
+<div class="overlay" id="brandOverlay" onclick="closeBrandModal()">
+  <div class="modal" id="brandModal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title" id="brandModalTitle">Brand</span>
+      <button class="modal-close" onclick="closeBrandModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-img-placeholder" id="brandImgPlaceholder">No image yet</div>
+      <img class="modal-img-logo" id="brandImgPreview" src="" alt="" style="display:none"
+           onerror="this.style.display='none';document.getElementById('brandImgPlaceholder').style.display='flex'"/>
+      <div class="form-group">
+        <label class="form-label">Name <span style="color:var(--err)">*</span></label>
+        <input class="input" id="brandName" type="text" placeholder="e.g. Apple" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="input" id="brandDesc" rows="3" placeholder="Brand description…" style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group" style="margin:0" id="brandImageRow">
+        <label class="form-label">Image <span id="brandImageRequired" style="color:var(--err)">*</span></label>
+        <input class="input" id="brandImageFile" type="file" accept="image/*"
+               onchange="previewFileInput('brandImageFile','brandImgPreview','brandImgPlaceholder')"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeBrandModal()">Cancel</button>
+      <button class="btn btn-primary" id="brandSaveBtn" onclick="saveBrand()">Save Brand</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product model modal -->
+<div class="overlay" id="modelOverlay" onclick="closeModelModal()">
+  <div class="modal modal-lg" id="modelModal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title" id="modelModalTitle">Product Model</span>
+      <button class="modal-close" onclick="closeModelModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Live image preview -->
+      <div class="modal-img-placeholder" id="modelImgPlaceholder" style="aspect-ratio:4/3">No image yet</div>
+      <img class="modal-img-product" id="modelImgPreview" src="" alt="" style="display:none"
+           onerror="this.style.display='none';document.getElementById('modelImgPlaceholder').style.display='flex'"/>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Name <span style="color:var(--err)">*</span></label>
+          <input class="input" id="mName" type="text" placeholder="e.g. iPhone 15 Pro" required/>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Status</label>
+          <select class="input" id="mStatus">
+            <option value="">— unchanged —</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="PENDING_APPROVAL">PENDING_APPROVAL</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="DISABLED">DISABLED</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Brand</label>
+          <select class="input" id="mBrandSelect">
+            <option value="">— None —</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Category <span style="color:var(--err)">*</span></label>
+          <select class="input" id="mCategorySelect" onchange="onModelCategoryChange()">
+            <option value="">— Select category —</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;grid-column:1/-1;" id="mSubcatRow" hidden>
+          <label class="form-label">Subcategory <span style="color:var(--err)">*</span></label>
+          <select class="input" id="mSubcatSelect">
+            <option value="">— Select subcategory —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="input" id="mDesc" rows="2" placeholder="Product description…" style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group" style="margin:0" id="mImageRow">
+        <label class="form-label">Image <span id="mImageRequired" style="color:var(--err)">*</span></label>
+        <input class="input" id="mImageFile" type="file" accept="image/*"
+               onchange="previewFileInput('mImageFile','modelImgPreview','modelImgPlaceholder')"/>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModelModal()">Cancel</button>
+      <button class="btn btn-primary" id="modelSaveBtn" onclick="saveModel()">Save Model</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product model view/detail modal -->
+<div class="overlay" id="overlayViewModel" onclick="closeViewModelModal()">
+  <div class="modal modal-lg" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title">Product Model Details</span>
+      <button class="modal-close" onclick="closeViewModelModal()">✕</button>
+    </div>
+    <div class="modal-body" id="viewModelBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeViewModelModal()">Close</button>
+      <button class="btn btn-primary" id="viewModelEditBtn">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Approve Product Request modal -->
+<div class="overlay" id="approveOverlay" onclick="closeApproveModal()">
+  <div class="modal modal-lg" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title" id="approveModalTitle">Approve Request</span>
+      <button class="modal-close" onclick="closeApproveModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label class="form-label">Name <span style="color:var(--danger)">*</span></label>
+          <input class="form-control" id="apName" placeholder="Product model name" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category <span style="color:var(--danger)">*</span></label>
+          <select class="form-control" id="apCategory" onchange="onApCategoryChange()">
+            <option value="">— select category —</option>
+          </select>
+        </div>
+        <div class="form-group" id="apSubcatGroup" style="display:none">
+          <label class="form-label">Subcategory <span style="color:var(--danger)">*</span></label>
+          <select class="form-control" id="apSubcat">
+            <option value="">— select subcategory —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Brand <span style="color:var(--muted);font-size:.8rem">(optional)</span></label>
+          <select class="form-control" id="apBrand">
+            <option value="">— no brand —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description <span style="color:var(--danger)">*</span></label>
+        <textarea class="form-control" id="apDesc" rows="3" placeholder="Product description"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Visible to all sellers?</label>
+        <div style="display:flex;gap:1.5rem;margin-top:.4rem">
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+            <input type="radio" name="apGlobal" value="true"> Yes (global)
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+            <input type="radio" name="apGlobal" value="false" checked> No (vendor-only)
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Replace image <span style="color:var(--muted);font-size:.8rem">(optional)</span></label>
+        <input type="file" class="form-control" id="apImage" accept="image/*">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeApproveModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="processRequest()">Approve & Create Model</button>
+    </div>
+  </div>
+</div>
+
+<!-- Generic view/detail modal -->
+<div class="overlay" id="viewOverlay" onclick="closeViewModal()">
+  <div class="modal modal-lg" id="viewModal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title" id="viewModalTitle">Details</span>
+      <button class="modal-close" onclick="closeViewModal()">✕</button>
+    </div>
+    <div class="modal-body" id="viewModalBody"></div>
+    <div class="modal-foot" id="viewModalFoot">
+      <button class="btn btn-ghost" onclick="closeViewModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="api.js"></script>
+<script>
+Auth.guard('ROLE_ADMIN');
+
+/* ═══════════════════════════════════════════════════
+   Shared helpers
+   ═══════════════════════════════════════════════════ */
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* Renders a thumbnail if url exists, otherwise a letter-avatar */
+function avatar(url, label) {
+  const letter = esc(String(label ?? '?')[0].toUpperCase());
+  if (url) {
+    return `<img class="thumb" src="${esc(url)}" alt="${letter}"
+              onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-letter',textContent:'${letter}'}))"/>`;
+  }
+  return `<div class="thumb-letter">${letter}</div>`;
+}
+
+/* Live image preview helper (URL input) */
+function previewImg(inputId, imgId, placeholderId) {
+  const raw  = document.getElementById(inputId).value.trim();
+  const src  = imgSrc(raw);
+  const img  = document.getElementById(imgId);
+  const ph   = document.getElementById(placeholderId);
+  if (src) {
+    img.src = src;
+    img.style.display = 'block';
+    ph.style.display  = 'none';
+  } else {
+    img.style.display = 'none';
+    ph.style.display  = 'flex';
+  }
+}
+
+/* Live image preview helper (file input) */
+function previewFileInput(inputId, imgId, placeholderId) {
+  const file = document.getElementById(inputId).files[0];
+  const img  = document.getElementById(imgId);
+  const ph   = document.getElementById(placeholderId);
+  if (file) {
+    img.src = URL.createObjectURL(file);
+    img.style.display = 'block';
+    ph.style.display  = 'none';
+  } else {
+    img.style.display = 'none';
+    ph.style.display  = 'flex';
+  }
+}
+
+/* Show existing image from URL in a modal with file input */
+function showExistingImage(url, imgId, placeholderId) {
+  const src = imgSrc(url);
+  const img = document.getElementById(imgId);
+  const ph  = document.getElementById(placeholderId);
+  if (src) {
+    img.src = src; img.style.display = 'block'; ph.style.display = 'none';
+  } else {
+    img.style.display = 'none'; ph.style.display = 'flex';
+  }
+}
+
+function statusBadge(s) {
+  const m = {
+    ACTIVE:'badge-active', INACTIVE:'badge-inactive', SUSPENDED:'badge-danger',
+    VENDOR_APPROVAL_PENDING:'badge-pending', PENDING:'badge-pending',
+    APPROVED:'badge-active', REJECTED:'badge-danger', DISABLED:'badge-inactive',
+    PENDING_APPROVAL:'badge-pending',
+  };
+  return m[s] ?? '';
+}
+
+function renderPagination(page, current, cb, pgId) {
+  const total = page.totalPages ?? 1;
+  const pg    = document.getElementById(pgId);
+  if (total <= 1) { pg.innerHTML = ''; return; }
+  let html = '';
+  if (current > 0) html += `<button class="page-btn" onclick="${cb}(${current-1})">‹ Prev</button>`;
+  const start = Math.max(0, current-2);
+  const end   = Math.min(total-1, current+2);
+  if (start>0) html += `<button class="page-btn" onclick="${cb}(0)">1</button>${start>1?'<span style="padding:0 .25rem">…</span>':''}`;
+  for (let i=start;i<=end;i++) html += `<button class="page-btn${i===current?' active':''}" onclick="${cb}(${i})">${i+1}</button>`;
+  if (end<total-1) html += `${end<total-2?'<span style="padding:0 .25rem">…</span>':''}<button class="page-btn" onclick="${cb}(${total-1})">${total}</button>`;
+  if (current < total-1) html += `<button class="page-btn" onclick="${cb}(${current+1})">Next ›</button>`;
+  pg.innerHTML = html;
+}
+
+/* ── Section switching ──────────────────────────────── */
+const sectionLoaders = {
+  customers     : () => loadCustomers(),
+  vendors       : () => loadVendors(),
+  categories    : () => loadCategories(),
+  brands        : () => loadBrands(),
+  productModels : () => loadModels(),
+  productRequests: () => loadProductRequests(),
+};
+
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  const secId = 'sec' + id[0].toUpperCase() + id.slice(1);
+  document.getElementById(secId)?.classList.add('active');
+  event.currentTarget?.classList.add('active');
+  sectionLoaders[id]?.();
+}
+
+/* ═══════════════════════════════════════════════════
+   CUSTOMERS
+   ═══════════════════════════════════════════════════ */
+let custPage = 0;
+async function loadCustomers(page = 0) {
+  custPage = page;
+  const tb = document.getElementById('tbCustomers');
+  tb.innerHTML = '<tr><td colspan="7" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data = await API.adminGetCustomers(page);
+    renderCustomers(data);
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="7" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function searchCustomers(page = 0) {
+  custPage = page;
+  const p = {
+    firstName : val('csFirst'),
+    lastName  : val('csLast'),
+    userName  : val('csUsername'),
+    email     : val('csEmail'),
+    status    : val('csStatus'),
+  };
+  const tb = document.getElementById('tbCustomers');
+  tb.innerHTML = '<tr><td colspan="7" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data = await API.adminSearchCustomers(p, page);
+    renderCustomers(data);
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="7" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   VENDORS
+   ═══════════════════════════════════════════════════ */
+let vendPage = 0;
+async function loadVendors(page = 0) {
+  vendPage = page;
+  const tb = document.getElementById('tbVendors');
+  tb.innerHTML = '<tr><td colspan="7" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data = await API.adminGetVendors(page);
+    renderVendors(data);
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="7" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function searchVendors(page = 0) {
+  vendPage = page;
+  const p = { name: val('vsName'), address: val('vsAddress'), status: val('vsStatus') };
+  const tb = document.getElementById('tbVendors');
+  tb.innerHTML = '<tr><td colspan="7" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data = await API.adminSearchVendors(p, page);
+    renderVendors(data);
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="7" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+/* ── Shared user table renderer ─────────────────────── */
+const USER_STATUSES = ['ACTIVE','INACTIVE','SUSPENDED','VENDOR_APPROVAL_PENDING'];
+
+function renderCustomers(page) {
+  const items = page.content ?? [];
+  const tb    = document.getElementById('tbCustomers');
+  if (!items.length) { tb.innerHTML = '<tr><td colspan="7" class="tbl-empty">No records found.</td></tr>'; return; }
+  items.forEach(u => { _custMap[u.id] = u; });
+  tb.innerHTML = items.map(u => `
+    <tr style="cursor:pointer" onclick="_custMap[${u.id}]&&showCustomerDetail(_custMap[${u.id}])">
+      <td>${avatar(imgSrc(u.imageUrl), u.firstName)}</td>
+      <td>${u.id}</td>
+      <td>${esc((u.firstName??'') + ' ' + (u.lastName??''))}</td>
+      <td>${esc(u.phoneNumber ?? '—')}</td>
+      <td>${esc(u.shippingAddress ?? '—')}</td>
+      <td><span class="badge ${statusBadge(u.status)}">${u.status ?? '—'}</span></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-sm" onclick="openStatusModal(${u.id},'customer')">Change Status</button>
+      </td>
+    </tr>`).join('');
+  renderPagination(page, custPage, 'loadCustomers', 'pgCustomers');
+}
+
+function renderVendors(page) {
+  const items = page.content ?? [];
+  const tb    = document.getElementById('tbVendors');
+  if (!items.length) { tb.innerHTML = '<tr><td colspan="7" class="tbl-empty">No records found.</td></tr>'; return; }
+  items.forEach(u => { _vendMap[u.id] = u; });
+  tb.innerHTML = items.map(u => `
+    <tr style="cursor:pointer" onclick="_vendMap[${u.id}]&&showVendorDetail(_vendMap[${u.id}])">
+      <td>${avatar(imgSrc(u.image_url), u.name)}</td>
+      <td>${u.id}</td>
+      <td>${esc(u.name ?? '—')}</td>
+      <td>${esc(u.address ?? '—')}</td>
+      <td>${u.rating != null ? (+u.rating).toFixed(1) + ' ★' : '—'}</td>
+      <td><span class="badge ${statusBadge(u.status)}">${u.status ?? '—'}</span></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-sm" onclick="openStatusModal(${u.id},'vendor')">Change Status</button>
+      </td>
+    </tr>`).join('');
+  renderPagination(page, vendPage, 'loadVendors', 'pgVendors');
+}
+
+/* ── Status modal ───────────────────────────────────── */
+let statusCtx = {};
+function openStatusModal(id, type) {
+  const entity  = type === 'customer' ? _custMap[id] : _vendMap[id];
+  const name    = entity ? (entity.firstName ? `${entity.firstName} ${entity.lastName??''}`.trim() : entity.name) : `${type} #${id}`;
+  const imgUrl  = entity ? (entity.imageUrl ?? entity.image_url ?? '') : '';
+  const current = entity?.status ?? '';
+  statusCtx = { id, type, current };
+  document.getElementById('statusModalTitle').textContent = `Change Status`;
+  document.getElementById('statusModalName').textContent  = name;
+  document.getElementById('statusModalMeta').textContent  = `ID: ${id} · Current: ${current || '—'}`;
+  document.getElementById('statusModalAvatar').innerHTML  = avatar(imgSrc(imgUrl), name);
+  const sel = document.getElementById('statusSelect');
+  sel.innerHTML = USER_STATUSES.map(s =>
+    `<option value="${s}" ${s===current?'selected':''}>${s}</option>`).join('');
+  document.getElementById('statusOverlay').classList.add('show');
+}
+function closeStatusModal() {
+  document.getElementById('statusOverlay').classList.remove('show');
+}
+async function saveStatus() {
+  const status = document.getElementById('statusSelect').value;
+  const btn    = document.getElementById('statusSaveBtn');
+  btn.disabled = true;
+  try {
+    const fn = statusCtx.type === 'customer' ? API.adminModifyCustStatus : API.adminModifyVendStatus;
+    await fn(statusCtx.id, { status });
+    toast('Status updated', 'ok');
+    closeStatusModal();
+    if (statusCtx.type === 'customer') loadCustomers(custPage);
+    else loadVendors(vendPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+/* ═══════════════════════════════════════════════════
+   CATEGORIES
+   ═══════════════════════════════════════════════════ */
+let catPage = 0;
+async function loadCategories(page = 0) {
+  catPage = page;
+  const tb = document.getElementById('tbCategories');
+  tb.innerHTML = '<tr><td colspan="5" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data = await API.adminGetCategories(page);
+    const items = data.content ?? [];
+    if (!items.length) { tb.innerHTML = '<tr><td colspan="5" class="tbl-empty">No categories found.</td></tr>'; return; }
+    items.forEach(c => { _catMap[c.id] = c; });
+    tb.innerHTML = items.map(c => `
+      <tr style="cursor:pointer" onclick="_catMap[${c.id}]&&showCategoryDetail(_catMap[${c.id}])">
+        <td>${avatar(imgSrc(c.imageUrl), c.name)}</td>
+        <td>${c.id}</td>
+        <td>${esc(c.name)}</td>
+        <td><span class="badge ${c.active===false?'badge-inactive':'badge-active'}">${c.active===false?'INACTIVE':'ACTIVE'}</span></td>
+        <td style="display:flex;gap:.5rem;flex-wrap:wrap;" onclick="event.stopPropagation()">
+          <button class="btn btn-sm" onclick="openCatModal(_catMap[${c.id}])">Edit</button>
+          <button class="btn btn-sm" onclick="openSubcats(${c.id},'${esc(c.name)}')">Subcats</button>
+          <button class="btn btn-sm ${c.active===false?'btn-ok':'btn-danger'}"
+                  onclick="toggleCategory(${c.id},${c.active!==false})">
+            ${c.active===false?'Activate':'Deactivate'}
+          </button>
+        </td>
+      </tr>`).join('');
+    renderPagination(data, catPage, 'loadCategories', 'pgCategories');
+  } catch(err) {
+    document.getElementById('tbCategories').innerHTML = `<tr><td colspan="5" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+/* Category modal */
+let editCatId = null;
+function openCatModal(cat = null) {
+  editCatId = cat?.id ?? null;
+  document.getElementById('catModalTitle').textContent = cat ? 'Edit Category' : 'Add Category';
+  document.getElementById('catName').value = cat?.name        ?? '';
+  document.getElementById('catDesc').value = cat?.description ?? '';
+  // Reset file input; on edit show the current image, on add show placeholder
+  document.getElementById('catImageFile').value = '';
+  document.getElementById('catImageRequired').style.display = cat ? 'none' : '';
+  showExistingImage(cat?.imageUrl, 'catImgPreview', 'catImgPlaceholder');
+  document.getElementById('catOverlay').classList.add('show');
+}
+function closeCatModal() {
+  document.getElementById('catOverlay').classList.remove('show');
+}
+function showCategoryDetail(c) {
+  const src = imgSrc(c.imageUrl);
+  document.getElementById('viewCatBody').innerHTML = `
+    ${src ? `<img src="${esc(src)}" class="modal-img-preview" alt="${esc(c.name)}" onerror="this.style.display='none'"/>` : `<div class="modal-img-placeholder">No image</div>`}
+    ${field('ID',          c.id)}
+    ${field('Name',        c.name)}
+    ${field('Description', c.description)}
+    ${field('Status',      c.active === false ? 'INACTIVE' : 'ACTIVE')}
+  `;
+  document.getElementById('viewCatEditBtn').onclick = () => { closeViewCatModal(); openCatModal(c); };
+  document.getElementById('overlayCatView').classList.add('show');
+}
+function closeViewCatModal() {
+  document.getElementById('overlayCatView').classList.remove('show');
+}
+async function saveCategory() {
+  const name = document.getElementById('catName').value.trim();
+  if (!name) { toast('Name is required', 'error'); return; }
+  const btn = document.getElementById('catSaveBtn');
+  btn.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('description', document.getElementById('catDesc').value.trim());
+    fd.append('active', 'true');
+    const file = document.getElementById('catImageFile').files[0];
+    if (!editCatId && !file) { toast('Image is required', 'error'); return; }
+    if (file) fd.append('imageFile', file);
+    if (editCatId) await API.adminUpdateCategory(editCatId, fd);
+    else           await API.adminAddCategory(fd);
+    toast(editCatId ? 'Category updated' : 'Category added', 'ok');
+    closeCatModal();
+    loadCategories(catPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleCategory(id, isActive) {
+  try {
+    if (isActive) {
+      // Deactivate: use the soft-delete endpoint (sets active=false)
+      await API.adminDeleteCategory(id);
+    } else {
+      // Activate: PATCH with active=true
+      const fd = new FormData();
+      fd.append('active', 'true');
+      await API.adminUpdateCategory(id, fd);
+    }
+    toast(isActive ? 'Category deactivated' : 'Category activated', 'ok');
+    loadCategories(catPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+}
+
+/* ── Subcategories ──────────────────────────────────── */
+let currentCatId = null;
+let subcatPage   = 0;
+
+function openSubcats(catId, catName) {
+  currentCatId = catId;
+  document.getElementById('subcatCatName').textContent = catName;
+  document.getElementById('subcatPanel').style.display = '';
+  loadSubcats(0);
+  document.getElementById('subcatPanel').scrollIntoView({ behavior:'smooth' });
+}
+function closeSubcats() { document.getElementById('subcatPanel').style.display = 'none'; }
+
+async function loadSubcats(page = 0) {
+  subcatPage = page;
+  const tb = document.getElementById('tbSubcats');
+  tb.innerHTML = '<tr><td colspan="5" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data  = await API.adminGetSubcats(currentCatId, page);
+    const items = data.content ?? [];
+    if (!items.length) { tb.innerHTML = '<tr><td colspan="5" class="tbl-empty">No subcategories.</td></tr>'; return; }
+    items.forEach(s => { _subcatMap[s.id] = s; });
+    tb.innerHTML = items.map(s => `
+      <tr style="cursor:pointer" onclick="_subcatMap[${s.id}]&&showSubcatDetail(_subcatMap[${s.id}])">
+        <td>${avatar(imgSrc(s.imageUrl), s.name)}</td>
+        <td>${s.id}</td>
+        <td>${esc(s.name)}</td>
+        <td><span class="badge ${s.active===false?'badge-inactive':'badge-active'}">${s.active===false?'INACTIVE':'ACTIVE'}</span></td>
+        <td onclick="event.stopPropagation()" style="display:flex;gap:.5rem;">
+          <button class="btn btn-sm" onclick="openSubcatModal(_subcatMap[${s.id}])">Edit</button>
+          <button class="btn btn-sm ${s.active===false?'btn-ok':'btn-danger'}"
+                  onclick="toggleSubcat(${s.id},${s.active!==false})">
+            ${s.active===false?'Activate':'Deactivate'}
+          </button>
+        </td>
+      </tr>`).join('');
+    renderPagination(data, subcatPage, 'loadSubcats', 'pgSubcats');
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="5" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+let editSubcatId = null;
+function openSubcatModal(sub = null) {
+  editSubcatId = sub?.id ?? null;
+  document.getElementById('subcatModalTitle').textContent = sub ? 'Edit Subcategory' : 'Add Subcategory';
+  document.getElementById('subcatName').value = sub?.name        ?? '';
+  document.getElementById('subcatDesc').value = sub?.description ?? '';
+  document.getElementById('subcatParentLabel').textContent =
+    document.getElementById('subcatCatName').textContent || `ID ${currentCatId}`;
+  document.getElementById('subcatImageFile').value = '';
+  document.getElementById('subcatImageRequired').style.display = sub ? 'none' : '';
+  showExistingImage(sub?.imageUrl, 'subcatImgPreview', 'subcatImgPlaceholder');
+  document.getElementById('subcatOverlay').classList.add('show');
+}
+function closeSubcatModal() {
+  document.getElementById('subcatOverlay').classList.remove('show');
+}
+function showSubcatDetail(s) {
+  const src = imgSrc(s.imageUrl);
+  document.getElementById('viewSubcatBody').innerHTML = `
+    ${src ? `<img src="${esc(src)}" class="modal-img-preview" alt="${esc(s.name)}" onerror="this.style.display='none'"/>` : `<div class="modal-img-placeholder">No image</div>`}
+    ${field('ID',          s.id)}
+    ${field('Name',        s.name)}
+    ${field('Description', s.description)}
+    ${field('Status',      s.active === false ? 'INACTIVE' : 'ACTIVE')}
+  `;
+  document.getElementById('viewSubcatEditBtn').onclick = () => { closeViewSubcatModal(); openSubcatModal(s); };
+  document.getElementById('overlaySubcatView').classList.add('show');
+}
+function closeViewSubcatModal() {
+  document.getElementById('overlaySubcatView').classList.remove('show');
+}
+async function saveSubcategory() {
+  const name = document.getElementById('subcatName').value.trim();
+  if (!name) { toast('Name is required', 'error'); return; }
+  const btn = document.getElementById('subcatSaveBtn');
+  btn.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('description', document.getElementById('subcatDesc').value.trim());
+    fd.append('active', 'true');
+    const file = document.getElementById('subcatImageFile').files[0];
+    if (!editSubcatId && !file) { toast('Image is required', 'error'); return; }
+    if (file) fd.append('imageFile', file);
+    if (editSubcatId) await API.adminUpdateSubcat(currentCatId, editSubcatId, fd);
+    else              await API.adminAddSubcat(currentCatId, fd);
+    toast(editSubcatId ? 'Subcategory updated' : 'Subcategory added', 'ok');
+    closeSubcatModal();
+    loadSubcats(subcatPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleSubcat(id, isActive) {
+  try {
+    if (isActive) {
+      await API.adminDeleteSubcat(currentCatId, id);
+    } else {
+      const fd = new FormData();
+      fd.append('active', 'true');
+      await API.adminUpdateSubcat(currentCatId, id, fd);
+    }
+    toast(isActive ? 'Subcategory deactivated' : 'Subcategory activated', 'ok');
+    loadSubcats(subcatPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   BRANDS
+   ═══════════════════════════════════════════════════ */
+let brandPage = 0;
+async function loadBrands(page = 0) {
+  brandPage = page;
+  const tb = document.getElementById('tbBrands');
+  tb.innerHTML = '<tr><td colspan="6" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data  = await API.adminGetBrands(page);
+    const items = data.content ?? [];
+    if (!items.length) { tb.innerHTML = '<tr><td colspan="6" class="tbl-empty">No brands found.</td></tr>'; return; }
+    items.forEach(b => { _brandMap[b.id] = b; });
+    tb.innerHTML = items.map(b => `
+      <tr style="cursor:pointer" onclick="_brandMap[${b.id}]&&showBrandDetail(_brandMap[${b.id}])">
+        <td>${avatar(imgSrc(b.imageUrl), b.name)}</td>
+        <td>${b.id}</td>
+        <td>${esc(b.name)}</td>
+        <td style="max-width:200px;color:var(--muted);font-size:.85rem">${esc(b.description??'—')}</td>
+        <td><span class="badge ${b.active===false?'badge-inactive':'badge-active'}">${b.active===false?'INACTIVE':'ACTIVE'}</span></td>
+        <td onclick="event.stopPropagation()" style="display:flex;gap:.5rem;">
+          <button class="btn btn-sm" onclick="openBrandModal(_brandMap[${b.id}])">Edit</button>
+          <button class="btn btn-sm ${b.active===false?'btn-ok':'btn-danger'}"
+                  onclick="toggleBrand(${b.id},${b.active!==false})">
+            ${b.active===false?'Activate':'Deactivate'}
+          </button>
+        </td>
+      </tr>`).join('');
+    renderPagination(data, brandPage, 'loadBrands', 'pgBrands');
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="6" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+let editBrandId = null;
+function openBrandModal(brand = null) {
+  editBrandId = brand?.id ?? null;
+  document.getElementById('brandModalTitle').textContent = brand ? 'Edit Brand' : 'Add Brand';
+  document.getElementById('brandName').value = brand?.name        ?? '';
+  document.getElementById('brandDesc').value = brand?.description ?? '';
+  document.getElementById('brandImageFile').value = '';
+  document.getElementById('brandImageRequired').style.display = brand ? 'none' : '';
+  showExistingImage(brand?.imageUrl, 'brandImgPreview', 'brandImgPlaceholder');
+  document.getElementById('brandOverlay').classList.add('show');
+}
+function closeBrandModal() {
+  document.getElementById('brandOverlay').classList.remove('show');
+}
+function showBrandDetail(b) {
+  const src = imgSrc(b.imageUrl);
+  document.getElementById('viewBrandBody').innerHTML = `
+    ${src ? `<img src="${esc(src)}" class="modal-img-logo" alt="${esc(b.name)}" onerror="this.style.display='none'"/>` : `<div class="modal-img-placeholder">No image</div>`}
+    ${field('ID',          b.id)}
+    ${field('Name',        b.name)}
+    ${field('Description', b.description)}
+    ${field('Status',      b.active === false ? 'INACTIVE' : 'ACTIVE')}
+  `;
+  document.getElementById('viewBrandEditBtn').onclick = () => { closeViewBrandModal(); openBrandModal(b); };
+  document.getElementById('overlayBrandView').classList.add('show');
+}
+function closeViewBrandModal() {
+  document.getElementById('overlayBrandView').classList.remove('show');
+}
+async function saveBrand() {
+  const name = document.getElementById('brandName').value.trim();
+  if (!name) { toast('Name is required', 'error'); return; }
+  const btn = document.getElementById('brandSaveBtn');
+  btn.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('description', document.getElementById('brandDesc').value.trim());
+    fd.append('active', 'true');
+    const file = document.getElementById('brandImageFile').files[0];
+    if (!editBrandId && !file) { toast('Image is required', 'error'); return; }
+    if (file) fd.append('imageFile', file);
+    if (editBrandId) await API.adminUpdateBrand(editBrandId, fd);
+    else             await API.adminAddBrand(fd);
+    toast(editBrandId ? 'Brand updated' : 'Brand added', 'ok');
+    closeBrandModal();
+    loadBrands(brandPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleBrand(id, isActive) {
+  try {
+    if (isActive) {
+      await API.adminDeleteBrand(id);
+    } else {
+      const fd = new FormData();
+      fd.append('active', 'true');
+      await API.adminUpdateBrand(id, fd);
+    }
+    toast(isActive ? 'Brand deactivated' : 'Brand activated', 'ok');
+    loadBrands(brandPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   PRODUCT MODELS
+   ═══════════════════════════════════════════════════ */
+/* ── Row data stores (avoid JSON.stringify in onclick attrs) ── */
+const _custMap   = {};   // id → customer object
+const _vendMap   = {};   // id → vendor object
+const _catMap    = {};   // id → category object
+const _subcatMap = {};   // id → subcategory object
+const _brandMap  = {};   // id → brand object
+const _modelMap  = {};   // id → product model object
+const _reqMap    = {};   // id → product request object
+
+const brandsCache  = {};  // brandId  → brandName
+const subcatsCache = {};  // subcatId → subcatName
+
+async function ensureBrandsCache() {
+  if (Object.keys(brandsCache).length > 0) return;
+  try {
+    const data = await API.adminGetBrands(0, 200);
+    (data.content ?? []).forEach(b => { brandsCache[b.id] = b.name; });
+  } catch(e) {}
+}
+
+async function resolveSubcatName(id) {
+  if (!id) return '—';
+  if (subcatsCache[id] !== undefined) return subcatsCache[id];
+  try {
+    const s = await API.adminGetSubcatById(id);
+    subcatsCache[id] = s.name ?? '—';
+  } catch(e) { subcatsCache[id] = `ID ${id}`; }
+  return subcatsCache[id];
+}
+
+let modelPage = 0;
+async function loadModels(page = 0) {
+  modelPage = page;
+  const tb = document.getElementById('tbModels');
+  tb.innerHTML = '<tr><td colspan="8" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data = await API.adminGetProductModels(page);
+    await _resolveModelNames(data.content ?? []);
+    renderModels(data);
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="8" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function searchModels(page = 0) {
+  modelPage = page;
+  const p = { name: val('pmName'), status: val('pmStatus') };
+  const tb = document.getElementById('tbModels');
+  tb.innerHTML = '<tr><td colspan="8" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data = await API.adminSearchProductModels(p, page);
+    await _resolveModelNames(data.content ?? []);
+    renderModels(data);
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="8" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function _resolveModelNames(items) {
+  await ensureBrandsCache();
+  const uniqueSubcatIds = [...new Set(items.map(m => m.subCategoryId).filter(Boolean))];
+  await Promise.all(uniqueSubcatIds.map(id => resolveSubcatName(id)));
+}
+
+function renderModels(data) {
+  const tb    = document.getElementById('tbModels');
+  const items = data.content ?? [];
+  if (!items.length) { tb.innerHTML = '<tr><td colspan="8" class="tbl-empty">No models found.</td></tr>'; return; }
+  items.forEach(m => { _modelMap[m.id] = m; });
+  tb.innerHTML = items.map(m => {
+    const brandName  = brandsCache[m.brandId]       ?? (m.brandId       ? `ID ${m.brandId}`       : '—');
+    const subcatName = subcatsCache[m.subCategoryId] ?? (m.subCategoryId ? `ID ${m.subCategoryId}` : '—');
+    return `
+    <tr style="cursor:pointer" onclick="_modelMap[${m.id}]&&showModelDetail(_modelMap[${m.id}])">
+      <td>${avatar(imgSrc(m.imageUrl), m.name)}</td>
+      <td>${m.id}</td>
+      <td>${esc(m.name)}</td>
+      <td>${esc(brandName)}</td>
+      <td>${esc(subcatName)}</td>
+      <td>${m.isGlobal ? 'Yes' : 'No'}</td>
+      <td><span class="badge ${statusBadge(m.status)}">${m.status ?? '—'}</span></td>
+      <td style="display:flex;gap:.5rem;" onclick="event.stopPropagation()">
+        <button class="btn btn-sm" onclick="openModelModal(_modelMap[${m.id}])">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteModel(${m.id})">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+  renderPagination(data, modelPage, 'loadModels', 'pgModels');
+}
+
+function showModelDetail(m) {
+  const brandName  = brandsCache[m.brandId]       ?? (m.brandId       ? `ID ${m.brandId}`       : '—');
+  const subcatName = subcatsCache[m.subCategoryId] ?? (m.subCategoryId ? `ID ${m.subCategoryId}` : '—');
+  const src = imgSrc(m.imageUrl);
+  document.getElementById('viewModelBody').innerHTML = `
+    ${src ? `<img src="${esc(src)}" class="modal-img-product" alt="${esc(m.name)}" onerror="this.style.display='none'"/>` : `<div class="modal-img-placeholder">No image</div>`}
+    ${field('ID',          m.id)}
+    ${field('Name',        m.name)}
+    ${field('Brand',       brandName)}
+    ${field('Subcategory', subcatName)}
+    ${field('Global',      m.isGlobal ? 'Yes' : 'No')}
+    ${field('Status',      m.status)}
+    ${field('Description', m.description)}
+  `;
+  document.getElementById('viewModelEditBtn').onclick = () => { closeViewModelModal(); openModelModal(m); };
+  document.getElementById('overlayViewModel').classList.add('show');
+}
+
+/* ── Product model dropdown helpers ── */
+const categoriesCache = [];  // [{id, name}]
+
+async function ensureCategoriesCache() {
+  if (categoriesCache.length > 0) return;
+  try {
+    const data = await API.adminGetCategories(0, 200);
+    (data.content ?? []).forEach(c => categoriesCache.push({ id: c.id, name: c.name }));
+  } catch(e) {}
+}
+
+function fillSelect(selectId, options, selectedId) {
+  const sel = document.getElementById(selectId);
+  const placeholder = sel.options[0];          // keep the first "— ... —" option
+  sel.innerHTML = '';
+  sel.appendChild(placeholder);
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.id;
+    opt.textContent = o.name;
+    if (o.id == selectedId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+async function onModelCategoryChange() {
+  const catId = document.getElementById('mCategorySelect').value;
+  const subcatRow = document.getElementById('mSubcatRow');
+  const subcatSel = document.getElementById('mSubcatSelect');
+  subcatSel.innerHTML = '<option value="">— loading… —</option>';
+  if (!catId) { subcatRow.hidden = true; return; }
+  subcatRow.hidden = false;
+  try {
+    const data = await API.adminGetSubcats(catId, 0, 200);
+    const subs = (data.content ?? []).map(s => ({ id: s.id, name: s.name }));
+    fillSelect('mSubcatSelect', subs, null);
+    if (!subs.length) subcatSel.innerHTML = '<option value="">— no subcategories —</option>';
+  } catch(e) {
+    subcatSel.innerHTML = '<option value="">— failed to load —</option>';
+  }
+}
+
+let editModelId = null;
+async function openModelModal(m = null) {
+  editModelId = m?.id ?? null;
+  document.getElementById('modelModalTitle').textContent = m ? 'Edit Product Model' : 'Add Product Model';
+  document.getElementById('mName').value   = m?.name        ?? '';
+  document.getElementById('mDesc').value   = m?.description ?? '';
+  document.getElementById('mStatus').value = m?.status      ?? '';
+  document.getElementById('mImageFile').value = '';
+  document.getElementById('mImageRequired').style.display = m ? 'none' : '';
+  showExistingImage(m?.imageUrl, 'modelImgPreview', 'modelImgPlaceholder');
+
+  // Populate brand dropdown
+  await ensureBrandsCache();
+  const brandOptions = Object.entries(brandsCache).map(([id, name]) => ({ id: Number(id), name }));
+  brandOptions.sort((a, b) => a.name.localeCompare(b.name));
+  fillSelect('mBrandSelect', brandOptions, m?.brandId ?? null);
+
+  // Populate category dropdown
+  await ensureCategoriesCache();
+  fillSelect('mCategorySelect', categoriesCache, null);
+
+  // If editing, find which category the subcat belongs to, then load subcats
+  const subcatRow = document.getElementById('mSubcatRow');
+  subcatRow.hidden = true;
+  document.getElementById('mSubcatSelect').innerHTML = '<option value="">— Select subcategory —</option>';
+
+  if (m?.subCategoryId) {
+    // Find the category that owns this subcat
+    try {
+      const sub = await API.adminGetSubcatById(m.subCategoryId);
+      const parentId = sub.parentID ?? sub.parentId;
+      if (parentId) {
+        // Select that category
+        document.getElementById('mCategorySelect').value = parentId;
+        // Load its subcats, then pre-select the right one
+        const data = await API.adminGetSubcats(parentId, 0, 200);
+        const subs = (data.content ?? []).map(s => ({ id: s.id, name: s.name }));
+        fillSelect('mSubcatSelect', subs, m.subCategoryId);
+        subcatRow.hidden = false;
+      }
+    } catch(e) {}
+  }
+
+  document.getElementById('modelOverlay').classList.add('show');
+}
+function closeModelModal() {
+  document.getElementById('modelOverlay').classList.remove('show');
+}
+function closeViewModelModal() {
+  document.getElementById('overlayViewModel').classList.remove('show');
+}
+async function saveModel() {
+  const name          = document.getElementById('mName').value.trim();
+  const brandId       = parseInt(document.getElementById('mBrandSelect').value)  || null;
+  const subCategoryId = parseInt(document.getElementById('mSubcatSelect').value) || null;
+  const description   = document.getElementById('mDesc').value.trim()            || null;
+  const status        = document.getElementById('mStatus').value                 || null;
+  if (!name) { toast('Name is required', 'error'); return; }
+  const btn = document.getElementById('modelSaveBtn');
+  btn.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    if (brandId)       fd.append('brandId',       brandId);
+    if (subCategoryId) fd.append('subCategoryId', subCategoryId);
+    if (description)   fd.append('description',   description);
+    if (status)        fd.append('status',         status);
+    fd.append('isGlobal', 'true');
+    const file = document.getElementById('mImageFile').files[0];
+    if (!editModelId && !file) { toast('Image is required', 'error'); return; }
+    if (file) fd.append('image', file);   // backend field name is "image"
+    if (editModelId) await API.adminUpdateProductModel(editModelId, fd);
+    else             await API.adminAddProductModel(fd);
+    toast(editModelId ? 'Model updated' : 'Model added', 'ok');
+    closeModelModal();
+    loadModels(modelPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function deleteModel(id) {
+  if (!confirm('Delete this product model?')) return;
+  try {
+    await API.adminDeleteProductModel(id);
+    toast('Model deleted', 'ok');
+    loadModels(modelPage);
+  } catch(err) { toast(err.message || 'Failed', 'error'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   PRODUCT REQUESTS
+   ═══════════════════════════════════════════════════ */
+let prPage = 0;
+async function loadProductRequests(page = 0) {
+  prPage = page;
+  const tb = document.getElementById('tbProductRequests');
+  tb.innerHTML = '<tr><td colspan="7" class="tbl-loading"><div class="spinner"></div></td></tr>';
+  try {
+    const data  = await API.adminGetProductRequests(page);
+    const items = data.content ?? [];
+    if (!items.length) { tb.innerHTML = '<tr><td colspan="6" class="tbl-empty">No requests found.</td></tr>'; return; }
+    items.forEach(r => { _reqMap[r.id] = r; });
+    tb.innerHTML = items.map(r => `
+      <tr style="cursor:pointer" onclick="_reqMap[${r.id}]&&showRequestDetail(_reqMap[${r.id}])">
+        <td>${avatar(imgSrc(r.imageUrl), r.name)}</td>
+        <td>${r.id}</td>
+        <td>${esc(r.name ?? '—')}</td>
+        <td style="max-width:200px;color:var(--muted);font-size:.85rem">${esc(r.description ?? '—')}</td>
+        <td>${r.isGlobal ? 'Yes' : 'No'}</td>
+        <td><span class="badge ${statusBadge(r.status)}">${r.status ?? '—'}</span></td>
+      </tr>`).join('');
+    renderPagination(data, prPage, 'loadProductRequests', 'pgProductRequests');
+  } catch(err) {
+    tb.innerHTML = `<tr><td colspan="7" class="tbl-empty">${esc(err.message)}</td></tr>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   Misc
+   ═══════════════════════════════════════════════════ */
+function val(id) { return document.getElementById(id)?.value?.trim() ?? ''; }
+
+function clearAndLoad(type) {
+  if (type === 'customer') { ['csFirst','csLast','csUsername','csEmail','csStatus'].forEach(id => document.getElementById(id).value=''); loadCustomers(); }
+  if (type === 'vendor')   { ['vsName','vsAddress','vsStatus'].forEach(id => document.getElementById(id).value=''); loadVendors(); }
+  if (type === 'model')    { ['pmName','pmStatus'].forEach(id => document.getElementById(id).value=''); loadModels(); }
+}
+
+/* ═══════════════════════════════════════════════════
+   Generic view/detail modal
+   ═══════════════════════════════════════════════════ */
+function closeViewModal() {
+  document.getElementById('viewOverlay').classList.remove('show');
+}
+
+function field(label, value) {
+  if (!value && value !== 0) return '';
+  return `<div style="margin-bottom:.85rem">
+    <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.25rem">${label}</div>
+    <div style="font-weight:500;color:var(--navy)">${esc(String(value))}</div>
+  </div>`;
+}
+
+function showCustomerDetail(u) {
+  document.getElementById('viewModalTitle').textContent = 'Customer Details';
+  document.getElementById('viewModalBody').innerHTML = `
+    <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)">
+      ${u.imageUrl
+        ? `<img src="${esc(imgSrc(u.imageUrl))}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--border)"
+               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-letter',style:'width:72px;height:72px;font-size:1.8rem;border-radius:50%',textContent:'${esc((u.firstName??'?')[0].toUpperCase())}'}))"/>`
+        : `<div class="thumb-letter" style="width:72px;height:72px;font-size:1.8rem;border-radius:50%">${esc((u.firstName??'?')[0].toUpperCase())}</div>`}
+      <div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--navy)">${esc((u.firstName??'')+' '+(u.lastName??''))}</div>
+        <span class="badge ${statusBadge(u.status)}" style="margin-top:.35rem">${u.status??'—'}</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem">
+      ${field('Customer ID', u.id)}
+      ${field('Phone', u.phoneNumber)}
+      ${field('Shipping Address', u.shippingAddress)}
+    </div>`;
+  document.getElementById('viewModalFoot').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeViewModal()">Close</button>
+    <button class="btn btn-primary" onclick="closeViewModal();openStatusModal(${u.id},'customer','${u.status??''}','${esc((u.firstName??'')+' '+(u.lastName??''))}','${esc(u.imageUrl??'')}')">Change Status</button>`;
+  document.getElementById('viewOverlay').classList.add('show');
+}
+
+function showVendorDetail(u) {
+  document.getElementById('viewModalTitle').textContent = 'Vendor Details';
+  document.getElementById('viewModalBody').innerHTML = `
+    <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)">
+      ${u.image_url
+        ? `<img src="${esc(imgSrc(u.image_url))}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--border)"
+               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-letter',style:'width:72px;height:72px;font-size:1.8rem;border-radius:50%',textContent:'${esc((u.name??'?')[0].toUpperCase())}'}))"/>`
+        : `<div class="thumb-letter" style="width:72px;height:72px;font-size:1.8rem;border-radius:50%">${esc((u.name??'?')[0].toUpperCase())}</div>`}
+      <div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--navy)">${esc(u.name??'—')}</div>
+        <span class="badge ${statusBadge(u.status)}" style="margin-top:.35rem">${u.status??'—'}</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem">
+      ${field('Vendor ID', u.id)}
+      ${field('Address', u.address)}
+      ${field('Rating', u.rating != null ? (+u.rating).toFixed(1) + ' / 5 ★' : null)}
+    </div>`;
+  document.getElementById('viewModalFoot').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeViewModal()">Close</button>
+    <button class="btn btn-primary" onclick="closeViewModal();openStatusModal(${u.id},'vendor','${u.status??''}','${esc(u.name??'')}','${esc(u.image_url??'')}')">Change Status</button>`;
+  document.getElementById('viewOverlay').classList.add('show');
+}
+
+function showRequestDetail(r) {
+  document.getElementById('viewModalTitle').textContent = 'Product Request #' + r.id;
+  document.getElementById('viewModalBody').innerHTML = `
+    ${r.imageUrl ? `<img src="${esc(imgSrc(r.imageUrl))}" alt=""
+        style="width:100%;aspect-ratio:16/9;object-fit:contain;background:var(--surface2);border-radius:var(--r);margin-bottom:1rem;display:block;"
+        onerror="this.style.display='none'"/>` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem;">
+      ${field('Name', r.name)}
+      ${field('Status', r.status)}
+      ${field('Global', r.isGlobal ? 'Yes' : 'No')}
+    </div>
+    ${r.description ? `<div style="margin-top:.5rem">${field('Description', r.description)}</div>` : ''}`;
+
+  const isPending = r.status === 'PENDING';
+  document.getElementById('viewModalFoot').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeViewModal()">Close</button>
+    ${isPending ? `
+      <button class="btn btn-danger" onclick="rejectRequest(${r.id})">Reject</button>
+      <button class="btn btn-primary" onclick="closeViewModal();openApproveModal(${r.id})">Approve</button>
+    ` : ''}`;
+  document.getElementById('viewOverlay').classList.add('show');
+}
+
+/* ═══════════════════════════════════════════════════
+   PRODUCT REQUESTS — actions
+   ═══════════════════════════════════════════════════ */
+async function rejectRequest(id) {
+  if (!confirm('Reject this product request?')) return;
+  try {
+    await API.adminRejectRequest(id);
+    toast('Request rejected', 'ok');
+    closeViewModal();
+    loadProductRequests(prPage);
+  } catch(err) { toast(err.message || 'Failed to reject', 'error'); }
+}
+
+let _approveRequestId = null;
+let _apFiltersLoaded  = false;
+
+async function openApproveModal(id) {
+  _approveRequestId = id;
+  const r = _reqMap[id];
+
+  /* Pre-fill text fields */
+  document.getElementById('apName').value = r?.name ?? '';
+  document.getElementById('apDesc').value = r?.description ?? '';
+  const globalVal = r?.isGlobal ? 'true' : 'false';
+  document.querySelectorAll('input[name="apGlobal"]').forEach(radio => {
+    radio.checked = radio.value === globalVal;
+  });
+  document.getElementById('apImage').value = '';
+  document.getElementById('approveModalTitle').textContent = `Approve Request #${id}`;
+
+  /* Load brand/category dropdowns once */
+  if (!_apFiltersLoaded) {
+    try {
+      const [brands, cats] = await Promise.all([API.adminGetBrands(0, 200), API.adminGetCategories(0, 200)]);
+      const brandSel = document.getElementById('apBrand');
+      (brands.content ?? brands).forEach(b => {
+        const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; brandSel.appendChild(o);
+      });
+      const catSel = document.getElementById('apCategory');
+      (cats.content ?? cats).forEach(c => {
+        const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; catSel.appendChild(o);
+      });
+      _apFiltersLoaded = true;
+    } catch(err) { toast('Failed to load filters: ' + err.message, 'error'); }
+  }
+
+  /* Reset subcategory */
+  document.getElementById('apSubcat').innerHTML = '<option value="">— select subcategory —</option>';
+  document.getElementById('apSubcatGroup').style.display = 'none';
+  document.getElementById('apCategory').value = '';
+  document.getElementById('apBrand').value = '';
+
+  document.getElementById('approveOverlay').classList.add('show');
+}
+
+async function onApCategoryChange() {
+  const catId = document.getElementById('apCategory').value;
+  const subSel = document.getElementById('apSubcat');
+  const subGrp = document.getElementById('apSubcatGroup');
+  subSel.innerHTML = '<option value="">— select subcategory —</option>';
+  subGrp.style.display = 'none';
+  if (!catId) return;
+  try {
+    const data = await API.adminGetSubcats(catId, 0, 200);
+    const items = data.content ?? data;
+    if (items.length) {
+      items.forEach(s => {
+        const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; subSel.appendChild(o);
+      });
+      subGrp.style.display = '';
+    }
+  } catch(err) { toast('Failed to load subcategories', 'error'); }
+}
+
+function closeApproveModal() {
+  document.getElementById('approveOverlay').classList.remove('show');
+  _approveRequestId = null;
+}
+
+async function processRequest() {
+  const subcategoryId = document.getElementById('apSubcat').value;
+  const modifiedName  = document.getElementById('apName').value.trim();
+  const modifiedDesc  = document.getElementById('apDesc').value.trim();
+  const brandId       = document.getElementById('apBrand').value;
+  const modifiedGlobal= document.querySelector('input[name="apGlobal"]:checked')?.value ?? 'false';
+  const imageFile     = document.getElementById('apImage').files[0];
+
+  if (!modifiedName)    { toast('Name is required', 'error'); return; }
+  if (!modifiedDesc)    { toast('Description is required', 'error'); return; }
+  if (!subcategoryId)   { toast('Subcategory is required', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('modifiedName',        modifiedName);
+  fd.append('modifiedDescription', modifiedDesc);
+  fd.append('modifiedGlobal',      modifiedGlobal);
+  fd.append('subcategoryId',       subcategoryId);
+  if (brandId)    fd.append('brandId',           brandId);
+  if (imageFile)  fd.append('modifiedImageFile', imageFile);
+
+  try {
+    await API.adminProcessRequest(_approveRequestId, fd);
+    toast('Request approved — product model created', 'ok');
+    closeApproveModal();
+    loadProductRequests(prPage);
+  } catch(err) { toast(err.message || 'Failed to process request', 'error'); }
+}
+
+function doLogout() { Auth.clear(); window.location.href = 'index.html'; }
+
+/* ── Init ───────────────────────────────────────────── */
+loadCustomers();
+</script>
+</body>
+</html>

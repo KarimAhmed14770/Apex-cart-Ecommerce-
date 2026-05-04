@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>KeeConnect – My Account</title>
+  <link rel="stylesheet" href="app.css"/>
+  <style>
+    .avatar {
+      width:72px; height:72px; border-radius:50%;
+      background:linear-gradient(135deg,var(--navy),var(--accent));
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:1.8rem; font-weight:700; flex-shrink:0;
+    }
+    .profile-header {
+      display:flex; align-items:center; gap:1.25rem;
+      background:#fff; border-radius:var(--radius-lg);
+      padding:1.5rem; box-shadow:var(--shadow-sm); margin-bottom:1.5rem;
+    }
+    .profile-header h2 { margin:0 0 .25rem; color:var(--navy); }
+    .profile-header p  { margin:0; color:var(--muted); font-size:.88rem; }
+
+    .section-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:1.25rem;
+    }
+    @media(max-width:768px){ .section-grid{ grid-template-columns:1fr; } }
+    .card-full { grid-column:1/-1; }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Nav ──────────────────────────────────────── -->
+<nav class="topnav">
+  <div class="topnav-brand">Kee<span>Connect</span></div>
+  <div class="topnav-actions">
+    <a href="shop.html" class="btn btn-ghost">← Back to Shop</a>
+    <button class="btn btn-ghost" onclick="doLogout()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ── Main ─────────────────────────────────────────── -->
+<main style="max-width:900px;margin:0 auto;padding:1.5rem;">
+
+  <!-- Profile header -->
+  <div class="profile-header">
+    <div class="avatar" id="avatarLetter">?</div>
+    <div>
+      <h2 id="profileName">Loading…</h2>
+      <p id="profileEmail"></p>
+      <p id="profileStatus" style="margin-top:.25rem"></p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" style="margin-bottom:1.25rem;">
+    <button class="tab-btn active" onclick="switchTab('profile')">Profile</button>
+    <button class="tab-btn"        onclick="switchTab('orders')">Orders</button>
+  </div>
+
+  <!-- ── Profile tab ──────────────────────────────── -->
+  <div id="tabProfile">
+    <div class="section-grid">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Personal Info</span></div>
+        <form onsubmit="saveProfile(event)">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input class="input" id="pName" type="text"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input class="input" id="pUsername" type="text" disabled style="background:var(--surface-alt)"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="input" id="pEmail" type="email"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input class="input" id="pPhone" type="tel" placeholder="+1 555 000 0000"/>
+          </div>
+          <button class="btn btn-primary" type="submit" id="saveBtn">Save Changes</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Account Details</span></div>
+        <div style="display:flex;flex-direction:column;gap:.75rem;">
+          <div>
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:.2rem">User ID</div>
+            <div id="detailId" style="font-weight:600;color:var(--navy)">—</div>
+          </div>
+          <div>
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:.2rem">Account Status</div>
+            <span id="detailStatus" class="badge">—</span>
+          </div>
+          <div>
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:.2rem">Member Since</div>
+            <div id="detailCreated" style="font-weight:600;color:var(--navy)">—</div>
+          </div>
+          <div>
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:.2rem">Role</div>
+            <span class="badge badge-info">Customer</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Orders tab ───────────────────────────────── -->
+  <div id="tabOrders" style="display:none">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Order History</span>
+        <button class="btn btn-sm" onclick="loadOrders()">Refresh</button>
+      </div>
+      <p style="color:var(--muted);font-size:.9rem;padding:.5rem 0">
+        Enter an order ID below to view your invoice, or browse recent orders.
+      </p>
+      <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+        <input class="input" id="invoiceId" type="number" placeholder="Order ID…" style="max-width:180px;margin:0"/>
+        <button class="btn btn-primary" onclick="loadInvoice()">View Invoice</button>
+      </div>
+      <div id="invoiceResult"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="api.js"></script>
+<script>
+Auth.guard('ROLE_CUSTOMER');
+
+/* ── Toast ──────────────────────────────────────────── */
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+/* ── Tabs ───────────────────────────────────────────── */
+function switchTab(t) {
+  document.getElementById('tabProfile').style.display = t==='profile' ? '' : 'none';
+  document.getElementById('tabOrders').style.display  = t==='orders'  ? '' : 'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=> b.classList.toggle('active', (i===0&&t==='profile')||(i===1&&t==='orders')));
+}
+
+/* ── Load profile ───────────────────────────────────── */
+async function loadProfile() {
+  try {
+    const p = await API.myProfile();
+    document.getElementById('avatarLetter').textContent = (p.name ?? p.username ?? '?')[0].toUpperCase();
+    document.getElementById('profileName').textContent  = p.name ?? p.username ?? '—';
+    document.getElementById('profileEmail').textContent = p.email ?? '—';
+    document.getElementById('pName').value     = p.name     ?? '';
+    document.getElementById('pUsername').value = p.username ?? '';
+    document.getElementById('pEmail').value    = p.email    ?? '';
+    document.getElementById('pPhone').value    = p.phone    ?? '';
+    document.getElementById('detailId').textContent      = p.id ?? '—';
+    document.getElementById('detailCreated').textContent = p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—';
+
+    const status = p.status ?? 'ACTIVE';
+    const el = document.getElementById('detailStatus');
+    el.textContent = status;
+    el.className = 'badge ' + statusBadge(status);
+    document.getElementById('profileStatus').innerHTML =
+      `<span class="badge ${statusBadge(status)}" style="font-size:.75rem">${status}</span>`;
+  } catch(err) {
+    toast(err.message || 'Failed to load profile', 'error');
+  }
+}
+
+function statusBadge(s) {
+  if (!s) return '';
+  const m = { ACTIVE:'badge-active', INACTIVE:'badge-inactive', SUSPENDED:'badge-danger', VENDOR_APPROVAL_PENDING:'badge-pending' };
+  return m[s] ?? '';
+}
+
+/* ── Save profile ───────────────────────────────────── */
+async function saveProfile(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await API.updateProfile({
+      name  : document.getElementById('pName').value.trim(),
+      email : document.getElementById('pEmail').value.trim(),
+      phone : document.getElementById('pPhone').value.trim() || null,
+    });
+    toast('Profile updated!', 'ok');
+    loadProfile();
+  } catch(err) {
+    toast(err.message || 'Update failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  }
+}
+
+/* ── Invoice lookup ─────────────────────────────────── */
+async function loadInvoice() {
+  const id = document.getElementById('invoiceId').value.trim();
+  if (!id) { toast('Enter an order ID', 'error'); return; }
+  const box = document.getElementById('invoiceResult');
+  box.innerHTML = '<div class="spinner" style="margin:1rem auto;"></div>';
+  try {
+    const inv  = await API.getInvoice(id);
+    const items = inv.items ?? inv.orderItems ?? [];
+    box.innerHTML = `
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:2px solid var(--navy)">
+          <div><strong style="color:var(--navy)">Order #${inv.id ?? id}</strong><br>
+          <span style="font-size:.82rem;color:var(--muted)">${new Date(inv.createdAt??Date.now()).toLocaleString()}</span></div>
+          <span class="badge badge-active">${inv.status ?? 'PLACED'}</span>
+        </div>
+        ${items.map(i=>`
+          <div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.9rem">
+            <span>${esc(i.productName??i.name??'Item')} × ${i.quantity}</span>
+            <span>$${((+(i.price??i.unitPrice??0))*i.quantity).toFixed(2)}</span>
+          </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;margin-top:.75rem;font-weight:700">
+          <span>Total</span><span style="color:var(--accent)">$${(+(inv.total??inv.totalAmount??0)).toFixed(2)}</span>
+        </div>
+        <p style="margin-top:.75rem;font-size:.82rem;color:var(--muted)">
+          Shipping: ${esc(inv.shippingAddress??'—')} · Payment: ${esc(inv.paymentMethod??'—')}
+        </p>
+      </div>`;
+  } catch(err) {
+    box.innerHTML = `<p style="color:var(--err)">${err.message}</p>`;
+  }
+}
+
+function esc(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function doLogout() { Auth.clear(); window.location.href = 'index.html'; }
+
+loadProfile();
+</script>
+</body>
+</html>
