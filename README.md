@@ -60,29 +60,31 @@ cd Kee-V2C-Platform
 ### 2. Create the database and run the schema scripts
 
 ```sql
-CREATE DATABASE kee_v2c_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE `Kee_V2C_Platform` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
+
+> **Note:** The database name is case-sensitive on Linux. Use `Kee_V2C_Platform` exactly as shown — the migration scripts reference this name directly.
 
 Then run the SQL files in `src/main/resources/db/migration/` in the order below (order matters — foreign key dependencies). You can use MySQL Workbench, DBeaver, or the MySQL CLI:
 
 ```bash
 # 1. Core users: credentials, customers, vendors, roles (no dependencies)
-mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_customer_vendor_credentials_tables.sql
+mysql -u YOUR_USERNAME -p Kee_V2C_Platform < src/main/resources/db/migration/V2_Create_customer_vendor_credentials_tables.sql
 
 # 2. Catalogue: categories, sub-categories, brands, product models, products, shops, stock (needs vendors)
-mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_categories_products_shops_stock.sql
+mysql -u YOUR_USERNAME -p Kee_V2C_Platform < src/main/resources/db/migration/V2_Create_categories_products_shops_stock.sql
 
 # 3. Cart (needs customers + products)
-mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_cart_item_table.sql
+mysql -u YOUR_USERNAME -p Kee_V2C_Platform < src/main/resources/db/migration/V2_Create_cart_item_table.sql
 
 # 4. Product model requests (needs vendors)
-mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_Product_requests_table.sql
+mysql -u YOUR_USERNAME -p Kee_V2C_Platform < src/main/resources/db/migration/V2_Create_Product_requests_table.sql
 
 # 5. Orders, sub-orders, order items (needs customers + vendors + products)
-mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_customer_order_orderitems_tables.sql
+mysql -u YOUR_USERNAME -p Kee_V2C_Platform < src/main/resources/db/migration/V2_Create_customer_order_orderitems_tables.sql
 
 # 6. Payment records (needs orders — must be last)
-mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_Create_payment_records.sql
+mysql -u YOUR_USERNAME -p Kee_V2C_Platform < src/main/resources/db/migration/V2_Create_payment_records.sql
 ```
 
 ### 3. Configure application properties
@@ -101,7 +103,7 @@ Then open `src/main/resources/application.properties` and fill in:
 
 | Property | Description |
 |---|---|
-| `spring.datasource.url` | Change `x` to your database name, e.g. `kee_v2c_platform` |
+| `spring.datasource.url` | Already set to `Kee_V2C_Platform` — change only if you named your database differently |
 | `spring.datasource.username` | Your MySQL username |
 | `spring.datasource.password` | Your MySQL password |
 | `application.security.jwt.secret-key` | Base64 secret, min 256 bits — generate with `openssl rand -base64 32` |
