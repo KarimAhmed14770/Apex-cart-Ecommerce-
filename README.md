@@ -64,6 +64,7 @@ CREATE DATABASE `Kee_V2C_Platform` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 ```
 
 > **Note:** The database name is case-sensitive on Linux. Use `Kee_V2C_Platform` exactly as shown — the migration scripts reference this name directly.
+> If you prefer a different database name, do a find-and-replace of `Kee_V2C_Platform` across all 6 files in `src/main/resources/db/migration/` and update `spring.datasource.url` in `application.properties` to match.
 
 Then run the SQL files in `src/main/resources/db/migration/` in the order below (order matters — foreign key dependencies). You can use MySQL Workbench, DBeaver, or the MySQL CLI:
 
