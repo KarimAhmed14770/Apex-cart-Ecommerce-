@@ -34,7 +34,7 @@ A full-stack multi-vendor e-commerce REST API built with Spring Boot, featuring 
 **Admin**
 - Category, subcategory, and brand management
 - Product model (spec template) management
-- Vendor oversight
+- Vendor and customer oversight
 
 **Architecture highlights**
 - SOLID principles applied across the service layer (SRP, OCP, DIP)
@@ -63,7 +63,7 @@ cd Kee-V2C-Platform
 CREATE DATABASE kee_v2c_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Then run the SQL files in `src/main/resources/db/migration/` in the order below (order matters because of foreign key dependencies). You can use MySQL Workbench, DBeaver, or the MySQL CLI:
+Then run the SQL files in `src/main/resources/db/migration/` in the order below (order matters — foreign key dependencies). You can use MySQL Workbench, DBeaver, or the MySQL CLI:
 
 ```bash
 # 1. Core users: credentials, customers, vendors, roles (no dependencies)
@@ -87,21 +87,40 @@ mysql -u YOUR_USERNAME -p kee_v2c_platform < src/main/resources/db/migration/V2_
 
 ### 3. Configure application properties
 
+**Linux / macOS:**
 ```bash
 cp application.properties.example src/main/resources/application.properties
+```
+
+**Windows:**
+```cmd
+copy application.properties.example src\main\resources\application.properties
 ```
 
 Then open `src/main/resources/application.properties` and fill in:
 
 | Property | Description |
 |---|---|
+| `spring.datasource.url` | Change `x` to your database name, e.g. `kee_v2c_platform` |
 | `spring.datasource.username` | Your MySQL username |
 | `spring.datasource.password` | Your MySQL password |
 | `application.security.jwt.secret-key` | Base64 secret, min 256 bits — generate with `openssl rand -base64 32` |
-| `uploads_directory` | Absolute path to an existing writable directory for images |
+| `uploads_directory` | Absolute path to a **writable directory** where images will be stored (see step 4) |
 | `app.cors.allowed-origins` | Frontend origin, e.g. `http://localhost:8080` |
 
-### 4. Run the application
+### 4. Create the uploads directory
+
+The application stores product and profile images on disk. Create the directory you specified in `uploads_directory` before starting the app:
+
+```bash
+# Linux / macOS — example
+mkdir -p /var/uploads/v2c
+
+# Windows — example
+mkdir C:\uploads\v2c
+```
+
+### 5. Run the application
 
 ```bash
 # Linux / macOS
@@ -113,7 +132,24 @@ mvnw.cmd spring-boot:run
 
 The server starts on **http://localhost:8080**.
 
-### 5. Explore the API
+### 6. Create an admin account
+
+Admin users are not created through the registration API. After the app starts, register a regular account via the frontend or API, then promote it to admin directly in MySQL:
+
+```sql
+-- Replace 'your_username' with the username you registered
+UPDATE users_roles
+SET role = 'ROLE_ADMIN'
+WHERE user_id = (SELECT id FROM users_credentials WHERE user_name = 'your_username');
+
+UPDATE users_credentials
+SET status = 'ACTIVE'
+WHERE user_name = 'your_username';
+```
+
+Then log in at `http://localhost:8080/index.html` — you will be redirected to the admin panel.
+
+### 7. Explore the API
 
 Swagger UI is available at:
 
@@ -159,7 +195,7 @@ src/
 │   │   ├── events/          # Application events (OrderPlacedEvent)
 │   │   └── exception/       # Global exception handler
 │   └── resources/
-│       ├── db/migration/    # SQL schema scripts (run manually in order)
+│       ├── db/migration/    # SQL schema scripts (run in order — see Setup)
 │       └── static/          # Frontend (HTML, CSS, JS)
 └── test/
     └── java/com/Kee/V2C/
@@ -174,15 +210,15 @@ src/
 |---|---|---|
 | Authentication | `/api/auth/**` | Public |
 | Categories & Brands | `/api/categories/**`, `/api/brands/**` | Public |
-| Products | `/api/products/**` | Customer / Vendor |
+| Products | `/api/products/**` | Customer / Vendor / Admin |
 | Cart | `/api/carts/**` | Customer |
 | Checkout | `/api/checkouts` | Customer |
 | Orders | `/api/orders/**` | Customer |
 | Invoices | `/api/invoices/**` | Customer |
-| Vendor profile | `/api/vendors/**` | Vendor |
+| Vendor profile | `/api/vendors/**` | Vendor / Admin |
 | Shop management | `/api/shops/**` | Vendor |
 | Stock management | `/api/stocks/**` | Vendor |
 | Sub-orders | `/api/sub-orders/**` | Vendor |
 | Notifications (SSE) | `/api/notifications/**` | Vendor |
 | Product models | `/api/product-models/**` | Vendor / Admin |
-| Admin | `/api/admin/**` | Admin |
+| Customers | `/api/customers/**` | Customer / Admin |

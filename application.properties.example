@@ -8,8 +8,9 @@ spring.application.name=V2C
 
 # ────────────────────────────────────────────────────────────
 #  Database — MySQL
-#  Create a database named [x] before running.
-#  Flyway will automatically apply all migrations on startup.
+#  Create the database manually before running the app.
+#  Then execute the SQL scripts in src/main/resources/db/migration/
+#  in the order listed in the README (foreign key dependencies apply).
 # ────────────────────────────────────────────────────────────
 spring.datasource.url=jdbc:mysql://localhost:3306/x
 spring.datasource.username=YOUR_MYSQL_USERNAME
