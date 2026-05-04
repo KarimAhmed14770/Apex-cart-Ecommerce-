@@ -81,17 +81,22 @@ public class ProductModelController {
 
     @PreAuthorize("hasRole('SELLER')")
     @GetMapping("/search/vendor")
-    public ResponseEntity<Page<ProductModelResponse>> searchProductModel
-            (@RequestParam(required = false) String description,
-             @RequestParam(required = false) Long ownerId,
-             @RequestParam(required = false) Long subCategoryId,
-             @RequestParam(required = false) Long brandId,
-             @RequestParam(required = false) Boolean isGlobal,
-             Pageable page){
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(productModelService.getProductModelsByAttributes(null,description,null,
-                        subCategoryId,brandId,true, ProductModelStatus.ACTIVE,page)
-                        .map(productModelService::convertProductModelToDto));
+    public ResponseEntity<Page<ProductModelResponse>> searchProductModel(
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Boolean myModels,
+            @RequestParam(required = false) Long subCategoryId,
+            @RequestParam(required = false) Long brandId,
+            Pageable page) {
+
+        Page<ProductModelResponse> result;
+        if (Boolean.TRUE.equals(myModels)) {
+            result = productModelService.getMyProductModels(description, subCategoryId, brandId, page);
+        } else {
+            result = productModelService.getProductModelsByAttributes(null, description, null,
+                            subCategoryId, brandId, true, ProductModelStatus.ACTIVE, page)
+                    .map(productModelService::convertProductModelToDto);
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
 

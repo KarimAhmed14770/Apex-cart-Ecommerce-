@@ -21,6 +21,8 @@ public interface ProductModelService {
                                                             Boolean isGlobal, ProductModelStatus status,
                                                             Pageable page);
     ProductModelResponse convertProductModelToDto(ProductModel productModel);
+    Page<ProductModelResponse> getMyProductModels(String description, Long subCategoryId, Long brandId, Pageable page);
+
 
 
 }

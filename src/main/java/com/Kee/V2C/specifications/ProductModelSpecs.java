@@ -55,7 +55,7 @@ public final class ProductModelSpecs {
     public static Specification<ProductModel> hasVendor(Long vendorId){
         return (root,query,cb)->{
             if(vendorId==null)return null;
-            return cb.equal(root.get("vendor").get("id"),vendorId);
+            return cb.equal(root.get("owner").get("id"),vendorId);
         };
     }
 

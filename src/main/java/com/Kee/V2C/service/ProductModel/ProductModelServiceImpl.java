@@ -29,17 +29,20 @@ public class ProductModelServiceImpl implements ProductModelService{
     private final BrandRepository brandRepository;
     private final SubCategoryRepository subCategoryRepository;
     private final ProductModelMapper productModelMapper;
+    private final SecurityUtil securityUtil;
 
     @Autowired
     public ProductModelServiceImpl(ProductModelRepository productModelRepository, ImageService imageService,
                                    VendorRepository vendorRepository,BrandRepository brandRepository,
-                                   SubCategoryRepository subCategoryRepository, ProductModelMapper productModelMapper){
+                                   SubCategoryRepository subCategoryRepository, ProductModelMapper productModelMapper,
+                                   final SecurityUtil securityUtil){
         this.productModelRepository=productModelRepository;
         this.imageService=imageService;
         this.vendorRepository=vendorRepository;
         this.brandRepository=brandRepository;
         this.subCategoryRepository=subCategoryRepository;
         this.productModelMapper=productModelMapper;
+        this.securityUtil=securityUtil;
 
     }
 
@@ -115,9 +118,9 @@ public class ProductModelServiceImpl implements ProductModelService{
         if(name!=null && !(name.isEmpty()))spec=spec.and(ProductModelSpecs.hasName(name));
         if(description!=null && !(description.isEmpty()))spec=spec.and(ProductModelSpecs.hasDescription(description));
         if(ownerId!=null)spec=spec.and(ProductModelSpecs.hasVendor(ownerId));
+        if(isGlobal!=null)spec=spec.and(ProductModelSpecs.isGlobal(isGlobal));
         if(subCategoryId!=null)spec=spec.and(ProductModelSpecs.hasSubCategory(subCategoryId));
         if(brandId!=null)spec=spec.and(ProductModelSpecs.hasBrand(brandId));
-        if(isGlobal!=null)spec=spec.and(ProductModelSpecs.isGlobal(isGlobal));
         if(status!=null)spec=spec.and(ProductModelSpecs.hasStatus(status));
 
         Page<ProductModel> productModels=productModelRepository.findAll(spec,page);
@@ -125,6 +128,11 @@ public class ProductModelServiceImpl implements ProductModelService{
         return productModels;
     }
 
+    @Override
+    public Page<ProductModelResponse> getMyProductModels(String description, Long subCategoryId, Long brandId, Pageable page) {
+        Long vendorId = securityUtil.getCurrentUserId();
+        return searchProductModel(null, description, vendorId, subCategoryId, brandId, null, ProductModelStatus.ACTIVE, page);
+    }
 
     public ProductModelResponse convertProductModelToDto(ProductModel productModel){
         return new ProductModelResponse(
