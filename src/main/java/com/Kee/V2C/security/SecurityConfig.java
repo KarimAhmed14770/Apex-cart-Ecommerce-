@@ -7,6 +7,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -16,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -63,11 +65,14 @@ public class SecurityConfig {
                                 , "/admin.html", "/api.js","/app.css","/uploads/**","/vendor.html"
                                 ,"/api/categories/**","/api/brands/**","/api/notifications/stream",
                                         "/").permitAll()// Make registration public
+                        .requestMatchers("/api/products/vendor/**").hasRole("SELLER")
                         .requestMatchers("/api/product-models/**").hasAnyRole("SELLER","ADMIN")
-                        .requestMatchers("/api/vendors/**","/api/products/vendor/**"
-                                ,"/api/shops/**","/api/stocks/**","/api/sub-orders/**").hasAnyRole("SELLER","ADMIN")
+                        .requestMatchers("/api/vendors/**","/api/shops/**","/api/stocks/**","/api/sub-orders/**").hasAnyRole("SELLER","ADMIN")
+                        .requestMatchers("/api/products/search/customer").hasRole("CUSTOMER")
+                        .requestMatchers("/api/products/search/admin").hasRole("ADMIN")
+                        .requestMatchers("/api/products","/api/products/*").hasAnyRole("CUSTOMER","ADMIN","SELLER")
                         .requestMatchers("/api/test/my-profile","/api/carts/**","/api/checkouts"
-                                ,"/api/invoices/**","/api/customers/**","/api/orders/**","/api/products","/api/products/*").hasAnyRole("CUSTOMER","ADMIN")
+                                ,"/api/invoices/**","/api/customers/**","/api/orders/**").hasAnyRole("CUSTOMER","ADMIN")
 
                         .anyRequest().authenticated() //any request of those are protected
         ).sessionManagement(session->

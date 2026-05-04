@@ -10,10 +10,13 @@ import com.Kee.V2C.entity.Vendor;
 import com.Kee.V2C.exception.ResourceNotFoundException;
 import com.Kee.V2C.exception.UserAccessDeniedException;
 import com.Kee.V2C.mapper.ProductMapper;
+import com.Kee.V2C.specifications.ProductSpecs;
+import com.Kee.V2C.specifications.VendorSpecs;
 import com.Kee.V2C.utils.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +50,25 @@ public class ProductServiceImpl implements ProductService {
         Product product=productRepository.findById(id).orElseThrow(()->
                 new ResourceNotFoundException("product with id: "+id+" not found."));
         return convertToDto(product);
+    }
+
+    @Override
+    public Page<ProductViewResponse> productSearch(Pageable page,String name,String description,Boolean active,
+                                            Long brandId,Long parentCategoryId,Long subCategoryId,Long vendorId,Float lowerRange,
+                                            Float higherRange){
+        Specification<Product> spec=(root, query, cb)->cb.conjunction();
+        if(name!=null)spec=spec.and(ProductSpecs.hasName(name));
+        if(description!=null)spec=spec.and(ProductSpecs.hasDescription(description));
+        if(active!=null)spec=spec.and(ProductSpecs.isActive(active));
+        if(brandId!=null)spec=spec.and(ProductSpecs.hasBrand(brandId));
+        if(vendorId!=null)spec=spec.and(ProductSpecs.hasVendor(vendorId));
+        if(lowerRange!=null || higherRange!=null)spec=spec.and(ProductSpecs.hasPriceBetween(lowerRange,higherRange));
+        if(parentCategoryId!=null)spec=spec.and(ProductSpecs.hasParentCategory(parentCategoryId));
+        if(subCategoryId!=null)spec=spec.and(ProductSpecs.hasSubCategory(subCategoryId));
+
+        Page<Product> products=productRepository.findAll(spec,page);
+        return products.map(this::convertToDto);
+
     }
 
 

@@ -10,7 +10,9 @@ import org.springframework.data.domain.Pageable;
 public interface ProductService {
     Page<ProductViewResponse> getProductByDescription(String description, Pageable page);
     ProductViewResponse getProductById(Long id);
-
+    Page<ProductViewResponse> productSearch(Pageable page,String name,String description,Boolean active,
+                                            Long brandId,Long parentCategoryId,Long subCategoryId,Long vendorId,Float lowerRange,
+                                            Float higherRange);
     Page<ProductResponse> showMyProducts(Pageable page);
     ProductResponse updateProductInfo(Long id, ProductUpdateRequest productUpdateRequest);
 
